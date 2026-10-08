@@ -81,6 +81,7 @@ class Dashboard {
     required this.users,
     required this.deposits,
     required this.withdrawals,
+    required this.risk,
     required this.bets,
     required this.games,
     required this.daily,
@@ -93,6 +94,7 @@ class Dashboard {
   final Map<String, int> users;
   final Map<String, int> deposits;
   final Map<String, int> withdrawals;
+  final Map<String, int> risk;
   final GameStats bets;
   final List<GameStats> games;
   final List<DayStats> daily;
@@ -110,6 +112,7 @@ class Dashboard {
         users: _ints(j['users']),
         deposits: _ints(j['deposits']),
         withdrawals: _ints(j['withdrawals']),
+        risk: j['risk'] == null ? const {'open_count': 0, 'high_count': 0} : _ints(j['risk']),
         bets: GameStats.fromJson(j['bets'] as Map<String, dynamic>),
         games: [for (final g in j['games'] as List) GameStats.fromJson(g as Map<String, dynamic>)],
         daily: [for (final d in j['daily'] as List) DayStats.fromJson(d as Map<String, dynamic>)],

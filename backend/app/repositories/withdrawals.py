@@ -53,7 +53,9 @@ async def list_for_admin(conn: AsyncConnection, status: str | None, limit: int) 
     cur = await conn.execute(
         f"""
         select {WITHDRAWAL_COLUMNS}, p.public_id as client_id, p.first_name || ' ' || p.last_name as client_name,
-               p.phone as client_phone, wa.balance as client_balance
+               p.phone as client_phone, wa.balance as client_balance,
+               array(select e.kind from public.risk_events e
+                      where e.reference = w.reference and e.resolved_at is null order by e.severity desc) as risk_flags
         from public.withdrawals w
         join public.profiles p on p.id = w.user_id
         join public.wallets wa on wa.id = w.wallet_id

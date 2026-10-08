@@ -159,6 +159,8 @@ rollback;
 
 -- Pari mutuel : sur 200 tours aléatoires avec des paris variés, la plateforme ne perd jamais
 begin;
+-- La simulation place ~1 300 paris dans la même transaction : limite anti-rafale levée ici seulement.
+update public.app_settings set value = '100000' where key = 'betting.max_bets_per_minute';
 do $$
 declare
   v_user constant uuid := '00000000-0000-0000-0000-00000000000f';

@@ -112,6 +112,8 @@ flutter run -d chrome --dart-define=SUPABASE_URL=… --dart-define=SUPABASE_PUBL
 | `GET /v1/bets/summary?game=&since=` | joueur | bilan : nombre de paris, total misé, total gagné, résultat net des paris réglés |
 | `GET /v1/admin/dashboard?period=&currency=` (période : today, 7d, 30d, 90d) | administration | tableau de bord : dépôts et retraits à traiter, mises, gains versés, produit brut par jeu et par jour, joueurs, soldes système, derniers tirages |
 | `GET /v1/admin/actions?before=` | admin, super_admin | journal des actions de l'administration |
+| `GET /v1/admin/risk-events?state=&client_id=` · `POST /v1/admin/risk-events/{id}/resolve` | administration (clôture : finance, admin) | alertes anti-fraude et leur clôture avec explication |
+| `POST /v1/admin/users/{public_id}/status` | admin, super_admin | suspendre, bloquer ou réactiver un compte (motif obligatoire) |
 | `GET /v1/withdrawals/info` | joueur | solde, minimum, maximum, frais, raison d'un blocage, numéro par défaut |
 | `POST /v1/withdrawals` (en-tête `Idempotency-Key`) · `GET /v1/withdrawals` · `POST /v1/withdrawals/{id}/cancel` | joueur | demande EN ATTENTE (montant bloqué aussitôt) ; historique ; annulation tant qu'elle est EN ATTENTE |
 | `GET /v1/admin/withdrawals?status=` | personnel | file des retraits (plus anciens d'abord) avec solde du client |
@@ -130,8 +132,10 @@ Moteur de tirage : `private.engine_tick()` crée les tours (2 créneaux à l'ava
 
 Règles des paris : deux modes de gain, `fixed` (gain = mise × cote, connu d'avance : Lonato) et `pool` (pari mutuel : Fruits). La mise quitte le solde au moment du pari (vers `HOUSE`) ; les cotes sont celles en vigueur à cet instant et restent figées sur le ticket, même si une nouvelle version est publiée ; une combinaison sans cote publiée est refusée (Fruits : 1 à 8, 10, 15 et 20 fruits) ; au tirage, chaque pari est réglé une seule fois et le gain crédité aussitôt ; un tour annulé rembourse toutes ses mises. Le Lonato se joue depuis Jeux > Lonato : choix du type (PERME, NAPE ou CHOX), grille 01–90 limitée au nombre de numéros ayant une cote publiée, gains affichés pour chaque nombre de numéros trouvés avant validation.
 
+Anti-fraude (migration 0013) : plus de 30 paris par minute pour un même joueur sont refusés (anti-robot). Les autres contrôles lèvent une **alerte** à examiner, sans bloquer d'argent : retrait vers le numéro d'un autre compte (comptes multiples), retrait sans avoir misé au moins 100 % des dépôts des 30 derniers jours, retrait moins d'une heure après un dépôt, gain d'au moins 500 000. Les seuils sont dans `app_settings` (`betting.max_bets_per_minute`, `risk.*`). Les alertes apparaissent sur la file des retraits, dans Administration > Alertes et sur la fiche client ; chacune est close avec une explication. Un admin peut suspendre (plus de paris, dépôts ni retraits), bloquer (en plus, portefeuille gelé) ou réactiver un compte, avec motif obligatoire ; seul un super admin peut le faire pour un membre de l'équipe, et personne pour son propre compte. Chaque action est tracée dans `admin_actions`, chaque modification des tables sensibles dans `audit_logs`. L'API ajoute des en-têtes de sécurité et limite les requêtes par adresse IP ; derrière un hébergeur avec proxy, régler `TRUSTED_PROXY_HOPS=1` pour que la limite ne puisse pas être contournée avec un faux `X-Forwarded-For`.
+
 Android : pour que le lien WhatsApp s'ouvre, ajouter dans `android/app/src/main/AndroidManifest.xml` (généré par `flutter create`) un bloc `<queries>` avec une intention `VIEW` sur le schéma `https`.
 
 ## Prochaine étape
 
-Sécurité, audit et anti-fraude.
+Support client (messages, questions fréquentes).

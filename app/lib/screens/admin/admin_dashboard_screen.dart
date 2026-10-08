@@ -124,6 +124,41 @@ class _DashboardBody extends StatelessWidget {
             ),
           ],
         ),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            Expanded(
+              child: _QueueCard(
+                icon: Icons.warning_amber,
+                title: 'Alertes anti-fraude',
+                count: d.risk['open_count']!,
+                amount: d.risk['high_count']! > 0 ? '${d.risk['high_count']} grave(s)' : 'à examiner',
+                onTap: () => context.go('/admin/risk'),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Card(
+                child: InkWell(
+                  onTap: () => context.go('/admin/users'),
+                  borderRadius: BorderRadius.circular(12),
+                  child: const Padding(
+                    padding: EdgeInsets.all(12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(Icons.person_search),
+                        SizedBox(height: 6),
+                        Text('Fiche client'),
+                        Text('chercher par ID, suspendre, bloquer'),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
 
         section('JEUX · ${period.label.toUpperCase()}'),
         _KpiGrid([

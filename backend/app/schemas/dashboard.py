@@ -71,6 +71,11 @@ class RoundStats(BaseModel):
     paid: int
 
 
+class RiskStats(BaseModel):
+    open_count: int
+    high_count: int
+
+
 class Dashboard(BaseModel):
     since: datetime
     currency_code: str
@@ -78,6 +83,7 @@ class Dashboard(BaseModel):
     users: UserStats
     deposits: DepositStats
     withdrawals: WithdrawalStats
+    risk: RiskStats
     bets: BetStats
     games: list[GameStats]
     daily: list[DayStats]
