@@ -66,5 +66,9 @@ jobs:
         run: flutter analyze
       - name: Tests
         run: flutter test
+      # Le dépôt ne versionne pas les fichiers générés par Flutter (web/index.html…) :
+      # on les crée comme indiqué dans le README, sans toucher à lib/ ni test/.
       - name: Compilation Web
-        run: flutter build web --release
+        run: |
+          flutter create . --platforms=web --project-name methe
+          flutter build web --release
