@@ -10,6 +10,7 @@ from app import db
 from app.api.router import api_router
 from app.config import get_settings
 from app.draw import engine
+from app.security.headers import SecurityHeadersMiddleware
 from app.security.rate_limit import RateLimitMiddleware
 
 
@@ -34,7 +35,9 @@ def create_app() -> FastAPI:
         docs_url="/docs" if settings.app_env != "production" else None,
         redoc_url=None,
     )
-    app.add_middleware(RateLimitMiddleware, per_minute=settings.rate_limit_per_minute)
+    app.add_middleware(SecurityHeadersMiddleware)
+    app.add_middleware(
+        RateLimitMiddleware, per_minute=settings.rate_limit_per_minute, trusted_hops=settings.trusted_proxy_hops)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_origin_list,

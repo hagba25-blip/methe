@@ -84,6 +84,7 @@ class Withdrawal {
     this.clientName,
     this.clientPhone,
     this.clientBalance,
+    this.riskFlags = const [],
   });
 
   final String id;
@@ -104,6 +105,9 @@ class Withdrawal {
   final String? clientPhone;
   final int? clientBalance;
 
+  /// Alertes anti-fraude ouvertes sur ce retrait (vue administration).
+  final List<String> riskFlags;
+
   factory Withdrawal.fromJson(Map<String, dynamic> j) => Withdrawal(
         id: j['id'] as String,
         reference: j['reference'] as String,
@@ -121,5 +125,6 @@ class Withdrawal {
         clientName: j['client_name'] as String?,
         clientPhone: j['client_phone'] as String?,
         clientBalance: j['client_balance'] as int?,
+        riskFlags: ((j['risk_flags'] as List?) ?? const []).cast<String>(),
       );
 }

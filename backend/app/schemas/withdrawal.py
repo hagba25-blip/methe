@@ -46,6 +46,7 @@ class AdminWithdrawalView(WithdrawalView):
     client_name: str
     client_phone: str
     client_balance: int
+    risk_flags: list[str] = []  # alertes anti-fraude ouvertes sur ce retrait
 
 
 class ProcessWithdrawal(BaseModel):

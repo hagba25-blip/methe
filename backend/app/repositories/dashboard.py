@@ -105,8 +105,13 @@ async def overview(conn: AsyncConnection, since: datetime, currency: str) -> dic
         group by r.id order by r.draw_at desc limit 12
         """, p)).fetchall()
 
+    risk = await (await conn.execute(
+        "select count(*) as open_count, count(*) filter (where severity >= 4) as high_count "
+        "from public.risk_events where resolved_at is null")).fetchone()
+
     return {
         "since": since,
+        "risk": risk,
         "currency_code": currency,
         "users": users,
         "deposits": deposits,
