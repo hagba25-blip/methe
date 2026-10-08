@@ -142,10 +142,10 @@ declare old_bet public.bets; new_bet public.bets;
 begin
   old_bet := private.place_bet('00000000-0000-0000-0000-00000000000f', '00000000-0000-0000-0000-0000000000a4', 'FRUITS', array['KIWI'], 50, 'v-old');
   insert into public.payout_rules (game_type_code, version, selection_count, match_count, multiplier, condition, effective_from)
-  values ('FRUITS', 2, 1, 1, 18, 'winner_in_selection', now() - interval '1 second');
+  values ('FRUITS', 3, 1, 1, 18, 'winner_in_selection', now() - interval '1 second');
   new_bet := private.place_bet('00000000-0000-0000-0000-00000000000f', '00000000-0000-0000-0000-0000000000a4', 'FRUITS', array['KIWI'], 50, 'v-new');
-  assert old_bet.payout_rule_version = 1 and old_bet.potential_payout = 2500, 'ancien pari à x50';
-  assert new_bet.payout_rule_version = 2 and new_bet.potential_payout = 900, 'nouveau pari à x18';
+  assert old_bet.payout_rule_version = 2 and old_bet.potential_payout = 2500, 'ancien pari à x50';
+  assert new_bet.payout_rule_version = 3 and new_bet.potential_payout = 900, 'nouveau pari à x18';
   assert private.playable_odds('FRUITS') = '{"1": {"1": 18}}', 'cotes affichées : ' || private.playable_odds('FRUITS');
   raise notice 'OK  versions de cotes : un pari placé garde ses cotes';
 end $$;

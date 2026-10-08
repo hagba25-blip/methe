@@ -43,7 +43,8 @@ def test_catalog(client):
     assert len(fruits["symbols"]) == 20 and fruits["symbols"][0]["emoji"]
     t = fruits["types"][0]
     assert t["code"] == "FRUITS" and t["min_stake"] == 50
-    assert t["odds"] == {"1": {"1": 50.0}, "20": {"1": 1.0}}, "seules les combinaisons avec une cote publiée"
+    assert {int(k): v["1"] for k, v in t["odds"].items()} == {
+        1: 50, 2: 25, 3: 16.67, 4: 12.5, 5: 10, 6: 8.33, 7: 7.14, 8: 6.25, 10: 5, 15: 3.33, 20: 1}, "cotes version 2"
     assert {x["code"] for x in games["LONATO"]["types"]} == {"PERME", "NAPE", "CHOX"}
 
 
@@ -72,7 +73,8 @@ def test_place_bet_debits_and_settles(client, sql, fruits_round):
 
 def test_bet_errors(client, fruits_round):
     assert bet(client, fruits_round, ["POMME"], 49).status_code == 409
-    assert bet(client, fruits_round, ["POMME", "KIWI"]).json()["detail"].startswith("Combinaison non disponible")
+    nine = [x["code"] for x in client.get("/v1/games").json()[0]["symbols"]][:9]
+    assert bet(client, fruits_round, nine).json()["detail"].startswith("Combinaison non disponible"), "9 fruits sans cote"
     assert bet(client, fruits_round, ["BANANE"], 10**9).json()["detail"] == "Solde insuffisant"
     assert bet(client, fruits_round, ["FRAMBOISE"]).json()["detail"] == "Fruit inconnu"
     assert bet(client, str(uuid.uuid4()), ["POMME"]).status_code == 404

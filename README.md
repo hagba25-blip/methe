@@ -20,7 +20,8 @@ methe/
 │   │   ├── …0008_deposits_flow.sql           demande, validation, refus, crédit manuel
 │   │   ├── …0009_withdrawals_flow.sql        retrait : blocage, vérification, paiement, refus
 │   │   ├── …0010_draw_engine.sql             moteur de tirage : tours, graines, résultats (pg_cron)
-│   │   └── …0011_betting.sql                 paris : prise, cotes figées, règlement, remboursement
+│   │   ├── …0011_betting.sql                 paris : prise, cotes figées, règlement, remboursement
+│   │   └── …0012_fruits_odds_v2.sql          cotes Fruits version 2
 │   ├── seed.sql             # pays, agents, jeux, 20 fruits, règles v1, trésorerie
 │   └── tests/               # tests SQL exécutables sur un PostgreSQL local
 ├── backend/                 # API Python (structure du cahier des charges §47)
@@ -78,7 +79,7 @@ flutter run -d chrome --dart-define=SUPABASE_URL=… --dart-define=SUPABASE_PUBL
 
 ## Points à confirmer
 
-1. **Cotes Fruits 2 à 19 fruits** : non fournies, donc **non jouables** pour l'instant. ⚠️ Avec 1 fruit à x50 alors qu'il y a 1 chance sur 20, la plateforme reverse **250 %** des mises en moyenne (perte certaine) ; 20 fruits à x1 reverse 100 % (aucune marge). Une cote équitable pour *k* fruits est 20/*k* ; par exemple avec 10 % de marge : 1 fruit → x18, 2 → x9, 4 → x4,5, 10 → x1,8.
+1. **Cotes Fruits** : version 2 choisie par l'exploitant le 8 octobre 2026 : 50 ÷ nombre de fruits (1 → x50, 2 → x25, 3 → x16,67, 4 → x12,5, 5 → x10, 6 → x8,33, 7 → x7,14, 8 → x6,25, 10 → x5, 15 → x3,33) et 20 → x1. 9, 11 à 14 et 16 à 19 fruits ne sont pas jouables. ⚠️ Avec 1 fruit gagnant sur 20, chacune de ces combinaisons (sauf 20 fruits) reverse en moyenne 2,5 fois les mises ; une nouvelle version de cotes peut être publiée à tout moment sans toucher aux paris déjà placés.
 2. **PERME** : seuls 2/2 (x300), 3/3 (x900), 3/2 (x100), 5/2 (x30) sont définis. Il manque les autres cas (4 numéros, 5 numéros avec 3/4/5 trouvés, 6 à 10 numéros). La règle « ÷10 » de l'exemple 5/2 est-elle générale ?
 3. **NAPE** : saisi comme 3 → x2700, 4 → x3600, 5 → x4500 (900 × nombre de numéros), gagnant seulement si tous sortent.
 4. **Retraits** : réglages provisoires dans `app_settings` : minimum 1 000 F, pas de maximum, 0 % de frais, pas de vérification d'identité obligatoire, 1 retrait en cours à la fois. À confirmer.
@@ -123,7 +124,7 @@ Règles de sécurité des retraits : le montant quitte le solde du joueur dès l
 
 Moteur de tirage : `private.engine_tick()` crée les tours (2 créneaux à l'avance), les ouvre en tirant une graine secrète de 256 bits dont seule l'empreinte SHA-256 est publiée, ferme les mises (1 min avant pour les Fruits, 2 min pour le Lonato), tire le résultat par HMAC-SHA256 puis révèle la graine. Sur Supabase, la migration le programme chaque minute avec pg_cron ; à défaut, mettre `DRAW_ENGINE_ENABLED=true` dans le backend. Créneaux en heure UTC (= heure de Lomé) : Fruits à chaque heure, Lonato à 00h, 03h, 06h… Un tour que le moteur n'a pas pu ouvrir à temps est annulé plutôt que tiré. Le tirage fait dans la base et l'implémentation Python (`backend/app/draw/rng.py`) donnent le même résultat ; les tests le vérifient sur 200 graines.
 
-Règles des paris : la mise quitte le solde au moment du pari (vers `HOUSE`) ; les cotes sont celles en vigueur à cet instant et restent figées sur le ticket, même si une nouvelle version est publiée ; une combinaison sans cote publiée est refusée (Fruits : seulement 1 et 20 fruits pour l'instant) ; au tirage, chaque pari est réglé une seule fois et le gain crédité aussitôt ; un tour annulé rembourse toutes ses mises. Le règlement couvre déjà les trois règles du Lonato (PERME, NAPE, CHOX), dont l'écran arrive en phase 7.
+Règles des paris : la mise quitte le solde au moment du pari (vers `HOUSE`) ; les cotes sont celles en vigueur à cet instant et restent figées sur le ticket, même si une nouvelle version est publiée ; une combinaison sans cote publiée est refusée (Fruits : 1 à 8, 10, 15 et 20 fruits) ; au tirage, chaque pari est réglé une seule fois et le gain crédité aussitôt ; un tour annulé rembourse toutes ses mises. Le règlement couvre déjà les trois règles du Lonato (PERME, NAPE, CHOX), dont l'écran arrive en phase 7.
 
 Android : pour que le lien WhatsApp s'ouvre, ajouter dans `android/app/src/main/AndroidManifest.xml` (généré par `flutter create`) un bloc `<queries>` avec une intention `VIEW` sur le schéma `https`.
 
