@@ -51,6 +51,16 @@ class GameType {
 
   List<int> get playableCounts => odds.keys.toList()..sort();
 
+  /// Nombre maximal de sélections ayant une cote publiée.
+  int get maxPlayable => playableCounts.isEmpty ? maxSelection : playableCounts.last;
+
+  /// Cotes pour [count] sélections : (nombre trouvé, multiplicateur), du meilleur au moindre.
+  List<(int, double)> oddsFor(int count) {
+    final entries = [for (final e in (odds[count] ?? const <int, double>{}).entries) (e.key, e.value)];
+    entries.sort((a, b) => b.$1.compareTo(a.$1));
+    return entries;
+  }
+
   /// Meilleur multiplicateur possible pour [count] sélections, ou null si non jouable.
   double? bestMultiplier(int count) {
     final o = odds[count];

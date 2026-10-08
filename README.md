@@ -125,10 +125,10 @@ Règles de sécurité des retraits : le montant quitte le solde du joueur dès l
 
 Moteur de tirage : `private.engine_tick()` crée les tours (2 créneaux à l'avance), les ouvre en tirant une graine secrète de 256 bits dont seule l'empreinte SHA-256 est publiée, ferme les mises (1 min avant pour les Fruits, 2 min pour le Lonato), tire le résultat par HMAC-SHA256 puis révèle la graine. Sur Supabase, la migration le programme chaque minute avec pg_cron ; à défaut, mettre `DRAW_ENGINE_ENABLED=true` dans le backend. Créneaux en heure UTC (= heure de Lomé) : Fruits à chaque heure, Lonato à 00h, 03h, 06h… Un tour que le moteur n'a pas pu ouvrir à temps est annulé plutôt que tiré. Le tirage fait dans la base et l'implémentation Python (`backend/app/draw/rng.py`) donnent le même résultat ; les tests le vérifient sur 200 graines.
 
-Règles des paris : deux modes de gain, `fixed` (gain = mise × cote, connu d'avance : Lonato) et `pool` (pari mutuel : Fruits). La mise quitte le solde au moment du pari (vers `HOUSE`) ; les cotes sont celles en vigueur à cet instant et restent figées sur le ticket, même si une nouvelle version est publiée ; une combinaison sans cote publiée est refusée (Fruits : 1 à 8, 10, 15 et 20 fruits) ; au tirage, chaque pari est réglé une seule fois et le gain crédité aussitôt ; un tour annulé rembourse toutes ses mises. Le règlement couvre déjà les trois règles du Lonato (PERME, NAPE, CHOX), dont l'écran arrive en phase 7.
+Règles des paris : deux modes de gain, `fixed` (gain = mise × cote, connu d'avance : Lonato) et `pool` (pari mutuel : Fruits). La mise quitte le solde au moment du pari (vers `HOUSE`) ; les cotes sont celles en vigueur à cet instant et restent figées sur le ticket, même si une nouvelle version est publiée ; une combinaison sans cote publiée est refusée (Fruits : 1 à 8, 10, 15 et 20 fruits) ; au tirage, chaque pari est réglé une seule fois et le gain crédité aussitôt ; un tour annulé rembourse toutes ses mises. Le Lonato se joue depuis Jeux > Lonato : choix du type (PERME, NAPE ou CHOX), grille 01–90 limitée au nombre de numéros ayant une cote publiée, gains affichés pour chaque nombre de numéros trouvés avant validation.
 
 Android : pour que le lien WhatsApp s'ouvre, ajouter dans `android/app/src/main/AndroidManifest.xml` (généré par `flutter create`) un bloc `<queries>` avec une intention `VIEW` sur le schéma `https`.
 
 ## Prochaine étape
 
-Phase 7 : écran Lonato (PERME, NAPE, CHOX).
+Historique complet des paris et des transactions.
