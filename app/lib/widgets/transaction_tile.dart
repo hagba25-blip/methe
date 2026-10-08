@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../core/format.dart';
@@ -75,6 +76,22 @@ class TransactionDetailSheet extends StatelessWidget {
             },
             icon: const Icon(Icons.copy, size: 18),
             label: const Text('Copier la référence'),
+          ),
+          TextButton.icon(
+            onPressed: () {
+              final category = tx.type.contains('deposit')
+                  ? 'deposit'
+                  : tx.type.contains('withdraw')
+                      ? 'withdrawal'
+                      : tx.type.contains('bet') || tx.type.contains('win')
+                          ? 'bet'
+                          : 'other';
+              final router = GoRouter.of(context);
+              Navigator.pop(context);
+              router.go(Uri(path: '/support/new', queryParameters: {'category': category, 'ref': tx.reference}).toString());
+            },
+            icon: const Icon(Icons.support_agent, size: 18),
+            label: const Text('Un problème ? Écrire au support'),
           ),
         ]),
       ),

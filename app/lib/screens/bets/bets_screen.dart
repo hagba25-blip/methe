@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/format.dart';
@@ -340,6 +341,15 @@ class BetDetailSheet extends ConsumerWidget {
                 icon: const Icon(Icons.verified_outlined, size: 18),
                 label: const Text('Vérifier le tirage'),
               ),
+            TextButton.icon(
+              onPressed: () {
+                final router = GoRouter.of(context);
+                Navigator.pop(context);
+                router.go(Uri(path: '/support/new', queryParameters: {'category': 'bet', 'ref': b.reference}).toString());
+              },
+              icon: const Icon(Icons.support_agent, size: 18),
+              label: const Text('Un problème ?'),
+            ),
           ]),
         ]),
       ),

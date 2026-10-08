@@ -109,9 +109,19 @@ async def overview(conn: AsyncConnection, since: datetime, currency: str) -> dic
         "select count(*) as open_count, count(*) filter (where severity >= 4) as high_count "
         "from public.risk_events where resolved_at is null")).fetchone()
 
+    support = await (await conn.execute(
+        """
+        select count(*) filter (where status = 'open') as todo_count,
+               count(*) filter (where status = 'answered') as answered_count,
+               coalesce(extract(epoch from now() - min(last_message_at) filter (where status = 'open')) / 3600, 0)::int
+                 as oldest_todo_hours
+        from public.support_tickets
+        """)).fetchone()
+
     return {
         "since": since,
         "risk": risk,
+        "support": support,
         "currency_code": currency,
         "users": users,
         "deposits": deposits,

@@ -74,7 +74,7 @@ end $$;
 
 -- Verrous : rien ne peut réécrire un résultat publié ni la graine
 select pg_temp.expect_error($q$
-  update public.game_rounds set result = '{"fruit":"POMME"}'
+  update public.game_rounds set result = '{"fruit":"TRUQUE"}'  -- jamais le vrai résultat
    where game_code = 'FRUITS' and draw_at = '2030-01-01 11:00:00+00' $q$, 'réécriture du résultat');
 select pg_temp.expect_error($q$
   update public.game_rounds set revealed_seed = repeat('0', 64)

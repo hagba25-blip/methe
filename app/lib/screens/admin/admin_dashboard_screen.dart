@@ -160,6 +160,44 @@ class _DashboardBody extends StatelessWidget {
           ],
         ),
 
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            Expanded(
+              child: _QueueCard(
+                icon: Icons.forum_outlined,
+                title: 'Support à traiter',
+                count: d.support['todo_count']!,
+                amount: d.support['todo_count']! > 0
+                    ? 'la plus ancienne : ${d.support['oldest_todo_hours']} h'
+                    : '${d.support['answered_count']} en attente du joueur',
+                onTap: () => context.go('/admin/support'),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Card(
+                child: InkWell(
+                  onTap: () => context.go('/admin/faq'),
+                  borderRadius: BorderRadius.circular(12),
+                  child: const Padding(
+                    padding: EdgeInsets.all(12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(Icons.quiz_outlined),
+                        SizedBox(height: 6),
+                        Text('Questions fréquentes'),
+                        Text('ajouter, modifier, publier'),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+
         section('JEUX · ${period.label.toUpperCase()}'),
         _KpiGrid([
           ('Mises', money(b.staked), '${b.betCount} pari(s) · ${b.players} joueur(s)'),

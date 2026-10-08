@@ -76,6 +76,12 @@ class RiskStats(BaseModel):
     high_count: int
 
 
+class SupportStats(BaseModel):
+    todo_count: int
+    answered_count: int
+    oldest_todo_hours: int
+
+
 class Dashboard(BaseModel):
     since: datetime
     currency_code: str
@@ -84,6 +90,7 @@ class Dashboard(BaseModel):
     deposits: DepositStats
     withdrawals: WithdrawalStats
     risk: RiskStats
+    support: SupportStats
     bets: BetStats
     games: list[GameStats]
     daily: list[DayStats]

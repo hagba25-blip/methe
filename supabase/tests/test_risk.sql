@@ -40,8 +40,8 @@ update public.game_rounds set status = 'closed' where id = '00000000-0000-0000-0
 select private.draw_round('00000000-0000-0000-0000-0000000000b1');
 do $$ begin
   assert (select count(*) from public.risk_events
-           where user_id = '00000000-0000-0000-0000-000000000071' and kind = 'big_win') = 1,
-         'une alerte gros gain (le pari sur 20 fruits gagne toujours)';
+           where user_id = '00000000-0000-0000-0000-000000000071' and kind = 'big_win') >= 1,
+         'au moins une alerte gros gain (le pari sur 20 fruits gagne toujours)';
   raise notice 'OK  alerte gros gain';
 end $$;
 

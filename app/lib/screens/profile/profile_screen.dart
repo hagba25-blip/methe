@@ -69,6 +69,12 @@ class ProfileScreen extends ConsumerWidget {
             title: const Text('Administration — Retraits'),
             onTap: () => context.go('/admin/withdrawals'),
           ),
+        if (p.isStaff)
+          ListTile(
+            leading: const Icon(Icons.forum_outlined),
+            title: const Text('Administration — Support'),
+            onTap: () => context.go('/admin/support'),
+          ),
         ListTile(
           leading: const Icon(Icons.history),
           title: const Text('Historique'),
@@ -76,7 +82,7 @@ class ProfileScreen extends ConsumerWidget {
         ),
         ListTile(
           leading: const Icon(Icons.support_agent),
-          title: const Text('Support'),
+          title: const Text('Aide et support'),
           onTap: () => context.go('/support'),
         ),
         ListTile(

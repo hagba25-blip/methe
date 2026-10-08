@@ -1,5 +1,6 @@
 import '../models/dashboard.dart';
 import '../models/risk.dart';
+import '../models/support.dart';
 import '../services/api_client.dart';
 
 class AdminRepository {
@@ -33,4 +34,35 @@ class AdminRepository {
 
   Future<AdminUser> setStatus(String publicId, AccountStatus status, String reason) async => AdminUser.fromJson(
       await _api.post('/v1/admin/users/$publicId/status', {'status': status.name, 'reason': reason}));
+
+  // Support ------------------------------------------------------------------------
+  Future<List<Ticket>> supportQueue(SupportQueue queue, {String? clientId}) async {
+    final qs = Uri(queryParameters: {'state': queue.name, if (clientId != null) 'client_id': clientId}).query;
+    return [for (final t in await _api.getList('/v1/admin/support/tickets?$qs')) Ticket.fromJson(t as Map<String, dynamic>)];
+  }
+
+  Future<Ticket> supportTicket(String id) async => Ticket.fromJson(await _api.get('/v1/admin/support/tickets/$id'));
+
+  Future<Ticket> supportReply(String id, String body) async =>
+      Ticket.fromJson(await _api.post('/v1/admin/support/tickets/$id/messages', {'body': body}));
+
+  /// [status] : open (remettre à traiter) | resolved | closed.
+  Future<Ticket> supportStatus(String id, TicketStatus status) async =>
+      Ticket.fromJson(await _api.post('/v1/admin/support/tickets/$id/status', {'status': status.name}));
+
+  Future<List<FaqEntry>> faq() async =>
+      [for (final f in await _api.getList('/v1/admin/faq')) FaqEntry.fromJson(f as Map<String, dynamic>)];
+
+  Future<FaqEntry> saveFaq(FaqEntry f, {bool create = false}) async {
+    final body = {
+      'category': f.category,
+      'question': f.question,
+      'answer': f.answer,
+      'sort_order': f.sortOrder,
+      'is_published': f.isPublished,
+    };
+    return FaqEntry.fromJson(create ? await _api.post('/v1/admin/faq', body) : await _api.patch('/v1/admin/faq/${f.id}', body));
+  }
+
+  Future<void> deleteFaq(int id) => _api.delete('/v1/admin/faq/$id');
 }
