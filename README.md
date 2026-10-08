@@ -157,6 +157,10 @@ Support client (migration 0014) : depuis Profil > Aide et support, le joueur lit
 
 Android : pour que le lien WhatsApp s'ouvre, ajouter dans `android/app/src/main/AndroidManifest.xml` (généré par `flutter create`) un bloc `<queries>` avec une intention `VIEW` sur le schéma `https`.
 
+## Mise en ligne
+
+Voir **[DEPLOIEMENT.md](DEPLOIEMENT.md)** : Supabase (base et tirages), Render (serveur Python, `render.yaml` + `backend/Dockerfile`), GitHub Pages (application Web) et APK Android, produits par le workflow `.github/workflows/deploy.yml`. Après chaque mise en ligne, `supabase/verification_production.sql` contrôle la base de production sans rien modifier.
+
 ## Prochaine étape
 
-Déploiement : application Web Flutter, backend Python, Supabase (production).
+Publication sur le Play Store (clé de signature Android, fiche de l'application) et nom de domaine personnalisé, si vous le souhaitez.

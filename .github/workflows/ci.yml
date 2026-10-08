@@ -72,3 +72,21 @@ jobs:
         run: |
           flutter create . --platforms=web --project-name methe
           flutter build web --release
+
+  docker:
+    name: Image Docker du backend
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Construction de l'image (comme sur Render)
+        run: docker build -t methe-api backend
+      - name: Démarrage et contrôle /health
+        run: |
+          docker run -d --name api -p 8000:8000 -e APP_ENV=production methe-api
+          for i in $(seq 1 30); do
+            if curl -fsS http://localhost:8000/health; then echo; break; fi
+            sleep 1
+          done
+          curl -fsS http://localhost:8000/health | grep -q '"ok"'
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8000/docs)" = 404   # documentation masquée en production
+          docker logs api
