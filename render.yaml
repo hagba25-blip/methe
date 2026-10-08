@@ -1,0 +1,32 @@
+# Render « Blueprint » : crée le service de l'API methe depuis ce dépôt.
+# Render > New > Blueprint > choisir ce dépôt. Les valeurs marquées `sync: false`
+# sont demandées par Render à la création : saisissez-les UNIQUEMENT dans Render.
+services:
+  - type: web
+    name: methe-api
+    runtime: docker
+    rootDir: backend
+    dockerfilePath: ./Dockerfile
+    region: frankfurt          # le plus proche de Lomé parmi les régions Render
+    plan: starter              # « free » possible pour essayer (mise en veille après 15 min sans visite)
+    healthCheckPath: /health
+    autoDeploy: true           # redéploie à chaque merge sur main
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: SUPABASE_URL
+        value: https://wpudmineqmchekedvwof.supabase.co
+      - key: DATABASE_URL
+        sync: false            # chaîne de connexion Supabase (contient le mot de passe) : à saisir dans Render
+      - key: SUPABASE_JWT_SECRET
+        sync: false            # laisser vide si le projet utilise les clés JWT asymétriques (recommandé)
+      - key: CORS_ORIGINS
+        value: https://hagba25-blip.github.io
+      - key: TRUSTED_PROXY_HOPS
+        value: "1"             # Render place un proxy devant l'API
+      - key: RATE_LIMIT_PER_MINUTE
+        value: "120"
+      - key: DRAW_ENGINE_ENABLED
+        value: "false"         # les tirages tournent dans Supabase (pg_cron)
+      - key: DEFAULT_COUNTRY
+        value: TG

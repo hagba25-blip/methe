@@ -1,0 +1,107 @@
+# Mise en ligne de l'application :
+# - Web : compilée puis publiée sur GitHub Pages (https://hagba25-blip.github.io/methe/)
+#   à chaque merge sur main, dès que la variable API_BASE_URL est définie
+#   (Settings > Secrets and variables > Actions > Variables).
+# - Android : APK téléchargeable dans l'onglet Actions (artefact « methe-android »).
+# Sur une pull request, tout est compilé pour vérification, rien n'est publié.
+name: Mise en ligne
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    paths: ["app/**", ".github/workflows/deploy.yml"]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  FLUTTER_VERSION: "3.47.6"
+  # Adresse publique de l'API (Render). Valeur par défaut = nom du service dans render.yaml.
+  API_BASE_URL: ${{ vars.API_BASE_URL || 'https://methe-api.onrender.com' }}
+
+jobs:
+  web:
+    name: Application Web
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - name: Fichiers Web de Flutter
+        run: flutter create . --platforms=web --project-name methe
+      - name: Compilation
+        run: >
+          flutter build web --release
+          --base-href /${{ github.event.repository.name }}/
+          --dart-define=API_BASE_URL=${{ env.API_BASE_URL }}
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: app/build/web
+
+  publish-web:
+    name: Publication GitHub Pages
+    needs: web
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && vars.API_BASE_URL != ''
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
+
+  android:
+    name: Application Android (APK)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - name: Fichiers Android de Flutter
+        run: |
+          flutter create . --platforms=android --project-name methe --org tg.methe
+          # Accès à Internet (API, Supabase) et ouverture des liens WhatsApp en version finale
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path("android/app/src/main/AndroidManifest.xml")
+          s = p.read_text()
+          if "android.permission.INTERNET" not in s:
+              s = s.replace("<application", '<uses-permission android:name="android.permission.INTERNET"/>\n    <application', 1)
+          if 'android:scheme="https"' not in s:
+              view = ('<intent>\n            <action android:name="android.intent.action.VIEW"/>\n'
+                      '            <data android:scheme="https"/>\n        </intent>\n        ')
+              s = s.replace("<queries>\n        ", "<queries>\n        " + view, 1) if "<queries>" in s else \
+                  s.replace("</manifest>", "    <queries>\n        " + view + "</queries>\n</manifest>", 1)
+          s = s.replace('android:label="methe"', 'android:label="Methe"')
+          p.write_text(s)
+          print(s)
+          PY
+      - name: Compilation
+        run: flutter build apk --release --dart-define=API_BASE_URL=${{ env.API_BASE_URL }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: methe-android
+          path: app/build/app/outputs/flutter-apk/app-release.apk
+          retention-days: 30

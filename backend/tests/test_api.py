@@ -53,3 +53,14 @@ def test_me_returns_profile_and_balance(client):
 def test_locale_detect(client):
     r = client.get("/v1/locale/detect", headers={"cf-ipcountry": "CI"})
     assert r.json()["dial_code"] == "+225"
+
+
+@pytest.mark.parametrize("method", ["GET", "POST", "PATCH", "DELETE"])
+def test_cors_preflight_allows_app_methods(client, method):
+    """L'application Web (autre domaine) doit pouvoir appeler toutes les méthodes utilisées."""
+    r = client.options("/v1/admin/faq/1", headers={
+        "Origin": "http://localhost:5000", "Access-Control-Request-Method": method,
+        "Access-Control-Request-Headers": "authorization,content-type"})
+    assert r.status_code == 200, r.text
+    assert method in r.headers["access-control-allow-methods"]
+    assert r.headers["access-control-allow-origin"] == "http://localhost:5000"
