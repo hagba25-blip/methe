@@ -15,6 +15,8 @@ class Settings(BaseSettings):
     cors_origins: str = "http://localhost:5000"
     default_country: str = "TG"
     rate_limit_per_minute: int = Field(default=120, ge=1)
+    # Boucle du moteur de tirage dans le backend (inutile si pg_cron est actif)
+    draw_engine_enabled: bool = False
 
     @property
     def jwks_url(self) -> str:

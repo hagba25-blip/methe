@@ -14,6 +14,7 @@ import '../screens/games/games_screen.dart';
 import '../screens/home/app_shell.dart';
 import '../screens/home/home_screen.dart';
 import '../screens/profile/edit_profile_screen.dart';
+import '../screens/results/results_screen.dart';
 import '../screens/profile/profile_screen.dart';
 import '../screens/wallet/wallet_screens.dart';
 import '../widgets/placeholder_view.dart';
@@ -59,7 +60,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(path: '/wallet', builder: (_, __) => const WalletScreen()),
           GoRoute(path: '/deposit', builder: (_, __) => const DepositScreen()),
           GoRoute(path: '/withdraw', builder: (_, __) => const WithdrawScreen()),
-          GoRoute(path: '/results', builder: (_, __) => const PlaceholderView('Résultats', phase: 9)),
+          GoRoute(path: '/results', builder: (_, __) => const ResultsScreen()),
           GoRoute(path: '/transactions', builder: (_, __) => const WalletScreen()),
           GoRoute(path: '/support', builder: (_, __) => const PlaceholderView('Support', phase: 12)),
           GoRoute(

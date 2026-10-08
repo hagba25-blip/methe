@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from app.api.routes import admin_deposits, admin_users, admin_withdrawals, deposits, health, locale, me, settings, wallet, withdrawals
+from app.api.routes import admin_deposits, admin_rounds, admin_users, admin_withdrawals, deposits, health, locale, me, rounds, settings, wallet, withdrawals
 
 api_router = APIRouter()
 api_router.include_router(health.router)
@@ -13,3 +13,5 @@ api_router.include_router(deposits.router)
 api_router.include_router(admin_deposits.router)
 api_router.include_router(withdrawals.router)
 api_router.include_router(admin_withdrawals.router)
+api_router.include_router(rounds.router)
+api_router.include_router(admin_rounds.router)
