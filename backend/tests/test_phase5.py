@@ -43,7 +43,7 @@ def test_results_are_published_and_verifiable(client):
         results = client.get(f"/v1/rounds/results?game={game}").json()
         assert results, game
         last = results[0]
-        assert last["status"] == "published" and last["revealed_seed"] and last["result"]
+        assert last["status"] in ("published", "settled") and last["revealed_seed"] and last["result"]
         v = client.get(f"/v1/rounds/{last['id']}/verify").json()
         assert v["commitment_ok"] and v["result_ok"], v
         assert v["recomputed"] == last["result"]

@@ -102,6 +102,15 @@ insert into public.payout_rules
   ('CHOX',   1, 1,  1, 10,   'exact_matches', '2026-01-01', 'x10')
 on conflict do nothing;
 
+-- FRUITS version 2 (choix de l'exploitant) : pari mutuel, poids 50 ÷ nombre de fruits, 20 fruits : 1.
+-- Identique à la migration 0012, pour les bases installées après celle-ci.
+update public.game_types set settlement_mode = 'pool' where code = 'FRUITS';
+insert into public.payout_rules (game_type_code, version, selection_count, match_count, multiplier, condition, effective_from, note)
+select 'FRUITS', 2, k, 1, m, 'winner_in_selection', '2026-10-08', format('%s fruit(s) → poids %s', k, m)
+from (values (1, 50), (2, 25), (3, 16.67), (4, 12.5), (5, 10), (6, 8.33), (7, 7.14), (8, 6.25),
+             (10, 5), (15, 3.33), (20, 1)) as t(k, m)
+on conflict do nothing;
+
 -- Portefeuilles système -------------------------------------------------------
 -- EXTERNAL_FUNDING : contrepartie comptable des fonds entrant dans le système.
 -- TREASURY         : trésorerie de démonstration/configuration (crédits admin).

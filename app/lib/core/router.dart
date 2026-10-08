@@ -10,6 +10,7 @@ import '../screens/admin/admin_withdrawals_screen.dart';
 import '../screens/auth/login_screen.dart';
 import '../screens/auth/register_screen.dart';
 import '../screens/bets/bets_screen.dart';
+import '../screens/fruits/fruits_screen.dart';
 import '../screens/games/games_screen.dart';
 import '../screens/home/app_shell.dart';
 import '../screens/home/home_screen.dart';
@@ -55,7 +56,11 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (_, state, child) => AppShell(location: state.matchedLocation, child: child),
         routes: [
           GoRoute(path: '/home', builder: (_, __) => const HomeScreen()),
-          GoRoute(path: '/games', builder: (_, __) => const GamesScreen()),
+          GoRoute(
+            path: '/games',
+            builder: (_, __) => const GamesScreen(),
+            routes: [GoRoute(path: 'fruits', builder: (_, __) => const FruitsScreen())],
+          ),
           GoRoute(path: '/bets', builder: (_, __) => const BetsScreen()),
           GoRoute(path: '/wallet', builder: (_, __) => const WalletScreen()),
           GoRoute(path: '/deposit', builder: (_, __) => const DepositScreen()),
