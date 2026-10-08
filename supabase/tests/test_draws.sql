@@ -46,7 +46,7 @@ begin
   -- 11h00 : tirage + publication, ouverture du tour suivant
   r := private.engine_tick('2030-01-01 11:00:00+00');
   select * into f from public.game_rounds where id = f.id;
-  assert f.status = 'published' and f.result ? 'fruit' and f.revealed_seed is not null, 'tiré et publié : ' || r;
+  assert f.status in ('published', 'settled') and f.result ? 'fruit' and f.revealed_seed is not null, 'tiré et publié : ' || r;
   assert exists (select 1 from public.game_symbols where game_code = 'FRUITS' and code = f.result->>'fruit'), 'fruit valide';
   assert encode(extensions.digest(decode(f.revealed_seed, 'hex'), 'sha256'), 'hex') = f.commitment_hash, 'graine conforme';
   assert f.result = private.compute_result('FRUITS', f.revealed_seed, f.id), 'résultat recalculable';
@@ -58,7 +58,7 @@ begin
   perform private.engine_tick('2030-01-01 11:58:00+00');
   perform private.engine_tick('2030-01-01 12:00:00+00');
   select * into l from public.game_rounds where id = l.id;
-  assert l.status = 'published', 'Lonato publié';
+  assert l.status in ('published', 'settled'), 'Lonato publié';
   assert jsonb_array_length(l.result->'numbers') = 5, '5 numéros';
   assert (select count(distinct n) from jsonb_array_elements_text(l.result->'numbers') n where n::int between 1 and 90) = 5,
          'distincts entre 01 et 90';
@@ -115,7 +115,7 @@ set local request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000a';
 select pg_temp.expect_error($q$ select * from private.round_secrets $q$, 'joueur lit les graines secrètes');
 select pg_temp.expect_error($q$ select private.engine_tick() $q$, 'joueur lance le moteur');
 do $$ begin
-  assert (select count(*) from public.game_rounds where status = 'published' and revealed_seed is not null) >= 2;
+  assert (select count(*) from public.game_rounds where status in ('published', 'settled') and revealed_seed is not null) >= 2;
   assert (select count(*) from public.game_rounds where status = 'open' and revealed_seed is not null) = 0;
   raise notice 'OK  RLS tirages';
 end $$;

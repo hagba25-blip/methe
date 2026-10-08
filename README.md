@@ -2,7 +2,7 @@
 
 Flutter (Android + Web) · Backend Python (FastAPI) · Supabase (PostgreSQL, Auth, RLS)
 
-État : **Phase 5 livrée** (moteur de tirage vérifiable, résultats publiés). Phase 4 : retraits avec blocage du montant et validation admin. Phase 3 : dépôts via agents WhatsApp. Phases 1–2 : architecture, authentification, profil, portefeuille.
+État : **Phase 6 livrée** (jeu des Fruits : prise de paris, règlement automatique, Mes paris). Phase 5 : moteur de tirage vérifiable. Phase 4 : retraits avec blocage du montant et validation admin. Phase 3 : dépôts via agents WhatsApp. Phases 1–2 : architecture, authentification, profil, portefeuille.
 
 ## Arborescence
 
@@ -19,7 +19,8 @@ methe/
 │   │   ├── …0007_admin_bootstrap.sql         nommer un administrateur
 │   │   ├── …0008_deposits_flow.sql           demande, validation, refus, crédit manuel
 │   │   ├── …0009_withdrawals_flow.sql        retrait : blocage, vérification, paiement, refus
-│   │   └── …0010_draw_engine.sql             moteur de tirage : tours, graines, résultats (pg_cron)
+│   │   ├── …0010_draw_engine.sql             moteur de tirage : tours, graines, résultats (pg_cron)
+│   │   └── …0011_betting.sql                 paris : prise, cotes figées, règlement, remboursement
 │   ├── seed.sql             # pays, agents, jeux, 20 fruits, règles v1, trésorerie
 │   └── tests/               # tests SQL exécutables sur un PostgreSQL local
 ├── backend/                 # API Python (structure du cahier des charges §47)
@@ -103,6 +104,9 @@ flutter run -d chrome --dart-define=SUPABASE_URL=… --dart-define=SUPABASE_PUBL
 | `GET /v1/rounds/results?game=&before=` | public | résultats publiés avec graine révélée, paginés |
 | `GET /v1/rounds/{id}/verify` | public | recalcule le résultat depuis la graine (preuve d'équité) |
 | `POST /v1/admin/engine/tick` · `POST /v1/admin/rounds/{id}/cancel` | admin | avance le moteur tout de suite ; annule un tour pas encore tiré (motif obligatoire) |
+| `GET /v1/games` | public | jeux, types de pari, cotes jouables (version en vigueur), fruits |
+| `POST /v1/bets` (en-tête `Idempotency-Key`) | joueur | pari : mise débitée, cotes figées ; un double envoi ne débite qu'une fois |
+| `GET /v1/bets?status=&game=&before=` · `GET /v1/bets/{id}` | joueur | mes paris avec résultat du tirage et gain |
 | `GET /v1/withdrawals/info` | joueur | solde, minimum, maximum, frais, raison d'un blocage, numéro par défaut |
 | `POST /v1/withdrawals` (en-tête `Idempotency-Key`) · `GET /v1/withdrawals` · `POST /v1/withdrawals/{id}/cancel` | joueur | demande EN ATTENTE (montant bloqué aussitôt) ; historique ; annulation tant qu'elle est EN ATTENTE |
 | `GET /v1/admin/withdrawals?status=` | personnel | file des retraits (plus anciens d'abord) avec solde du client |
@@ -119,8 +123,10 @@ Règles de sécurité des retraits : le montant quitte le solde du joueur dès l
 
 Moteur de tirage : `private.engine_tick()` crée les tours (2 créneaux à l'avance), les ouvre en tirant une graine secrète de 256 bits dont seule l'empreinte SHA-256 est publiée, ferme les mises (1 min avant pour les Fruits, 2 min pour le Lonato), tire le résultat par HMAC-SHA256 puis révèle la graine. Sur Supabase, la migration le programme chaque minute avec pg_cron ; à défaut, mettre `DRAW_ENGINE_ENABLED=true` dans le backend. Créneaux en heure UTC (= heure de Lomé) : Fruits à chaque heure, Lonato à 00h, 03h, 06h… Un tour que le moteur n'a pas pu ouvrir à temps est annulé plutôt que tiré. Le tirage fait dans la base et l'implémentation Python (`backend/app/draw/rng.py`) donnent le même résultat ; les tests le vérifient sur 200 graines.
 
+Règles des paris : la mise quitte le solde au moment du pari (vers `HOUSE`) ; les cotes sont celles en vigueur à cet instant et restent figées sur le ticket, même si une nouvelle version est publiée ; une combinaison sans cote publiée est refusée (Fruits : seulement 1 et 20 fruits pour l'instant) ; au tirage, chaque pari est réglé une seule fois et le gain crédité aussitôt ; un tour annulé rembourse toutes ses mises. Le règlement couvre déjà les trois règles du Lonato (PERME, NAPE, CHOX), dont l'écran arrive en phase 7.
+
 Android : pour que le lien WhatsApp s'ouvre, ajouter dans `android/app/src/main/AndroidManifest.xml` (généré par `flutter create`) un bloc `<queries>` avec une intention `VIEW` sur le schéma `https`.
 
 ## Prochaine étape
 
-Phase 6 : jeu des Fruits (choix des fruits, mise, prise de pari débitée via le ledger).
+Phase 7 : écran Lonato (PERME, NAPE, CHOX).
