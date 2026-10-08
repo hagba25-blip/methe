@@ -57,6 +57,12 @@ class ProfileScreen extends ConsumerWidget {
             title: const Text('Administration — Dépôts'),
             onTap: () => context.go('/admin/deposits'),
           ),
+        if (p.isStaff)
+          ListTile(
+            leading: const Icon(Icons.price_check),
+            title: const Text('Administration — Retraits'),
+            onTap: () => context.go('/admin/withdrawals'),
+          ),
         ListTile(
           leading: const Icon(Icons.history),
           title: const Text('Historique'),

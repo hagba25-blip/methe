@@ -2,7 +2,7 @@
 
 Flutter (Android + Web) · Backend Python (FastAPI) · Supabase (PostgreSQL, Auth, RLS)
 
-État : **Phase 3 livrée** (dépôts via agents WhatsApp, validation admin, crédit manuel). Phases 1–2 : architecture, authentification, profil, portefeuille.
+État : **Phase 4 livrée** (retraits avec blocage du montant et validation admin). Phase 3 : dépôts via agents WhatsApp. Phases 1–2 : architecture, authentification, profil, portefeuille.
 
 ## Arborescence
 
@@ -17,7 +17,8 @@ methe/
 │   │   ├── …0005_admin_audit_notifications.sql
 │   │   ├── …0006_rls_grants.sql              Row Level Security + droits
 │   │   ├── …0007_admin_bootstrap.sql         nommer un administrateur
-│   │   └── …0008_deposits_flow.sql           demande, validation, refus, crédit manuel
+│   │   ├── …0008_deposits_flow.sql           demande, validation, refus, crédit manuel
+│   │   └── …0009_withdrawals_flow.sql        retrait : blocage, vérification, paiement, refus
 │   ├── seed.sql             # pays, agents, jeux, 20 fruits, règles v1, trésorerie
 │   └── tests/               # tests SQL exécutables sur un PostgreSQL local
 ├── backend/                 # API Python (structure du cahier des charges §47)
@@ -78,7 +79,7 @@ flutter run -d chrome --dart-define=SUPABASE_URL=… --dart-define=SUPABASE_PUBL
 1. **Cotes Fruits 2 à 19 fruits** : non fournies, donc **non jouables** pour l'instant. ⚠️ Avec 1 fruit à x50 alors qu'il y a 1 chance sur 20, la plateforme reverse **250 %** des mises en moyenne (perte certaine) ; 20 fruits à x1 reverse 100 % (aucune marge). Une cote équitable pour *k* fruits est 20/*k* ; par exemple avec 10 % de marge : 1 fruit → x18, 2 → x9, 4 → x4,5, 10 → x1,8.
 2. **PERME** : seuls 2/2 (x300), 3/3 (x900), 3/2 (x100), 5/2 (x30) sont définis. Il manque les autres cas (4 numéros, 5 numéros avec 3/4/5 trouvés, 6 à 10 numéros). La règle « ÷10 » de l'exemple 5/2 est-elle générale ?
 3. **NAPE** : saisi comme 3 → x2700, 4 → x3600, 5 → x4500 (900 × nombre de numéros), gagnant seulement si tous sortent.
-4. **Retraits** : montant minimum (1 000 F provisoire), maximum, frais, vérification d'identité obligatoire ou non.
+4. **Retraits** : réglages provisoires dans `app_settings` : minimum 1 000 F, pas de maximum, 0 % de frais, pas de vérification d'identité obligatoire, 1 retrait en cours à la fois. À confirmer.
 5. **Licence** : l'exploitation de jeux d'argent réels exige en général une autorisation dans chaque pays visé (au Togo, la Loterie Nationale Togolaise, LONATO, est l’opérateur national ; le nom « Lonato » pour le jeu mérite aussi une vérification). Cette démarche reste de la responsabilité de l'exploitant.
 
 À titre indicatif, avec les valeurs fournies le taux de redistribution est d'environ 56 % pour CHOX, 75 % pour PERME 2/2, 80 % pour PERME à 3 numéros.
@@ -97,6 +98,10 @@ flutter run -d chrome --dart-define=SUPABASE_URL=… --dart-define=SUPABASE_PUBL
 | `GET /v1/admin/deposits?status=` | personnel | file des dépôts à valider |
 | `POST /v1/admin/deposits/{id}/approve` · `/reject` | finance, admin | crédite via le ledger (montant corrigeable) ou refuse avec motif ; notification + trace |
 | `POST /v1/admin/users/{ID}/credit` (en-tête `Idempotency-Key`) | finance, admin | crédit manuel §31 ; un double clic ne crédite qu'une fois |
+| `GET /v1/withdrawals/info` | joueur | solde, minimum, maximum, frais, raison d'un blocage, numéro par défaut |
+| `POST /v1/withdrawals` (en-tête `Idempotency-Key`) · `GET /v1/withdrawals` · `POST /v1/withdrawals/{id}/cancel` | joueur | demande EN ATTENTE (montant bloqué aussitôt) ; historique ; annulation tant qu'elle est EN ATTENTE |
+| `GET /v1/admin/withdrawals?status=` | personnel | file des retraits (plus anciens d'abord) avec solde du client |
+| `POST /v1/admin/withdrawals/{id}/review` · `/approve` · `/pay` · `/reject` | finance, admin | EN VÉRIFICATION → APPROUVÉ → PAYÉ, ou REFUSÉ avec motif (montant rendu) ; notification + trace |
 
 **Nommer un administrateur** : créer d'abord son compte dans l'application, puis dans Supabase > SQL Editor :
 ```sql
@@ -105,8 +110,10 @@ select private.grant_staff_role('vous@example.com', 'super_admin');
 
 Règles de sécurité des dépôts : ouvrir WhatsApp ne crédite rien ; un dépôt ne peut être validé qu'une fois ; un administrateur ne peut ni valider son propre dépôt ni se créditer lui-même ; 3 demandes en attente maximum par joueur ; montants min./max. dans `app_settings` (`deposit.*`).
 
+Règles de sécurité des retraits : le montant quitte le solde du joueur dès la demande (portefeuille `WITHDRAWAL_HOLD`), il ne peut donc pas être misé ni retiré deux fois ; refus ou annulation le rendent intégralement ; au paiement, le net sort du système et les frais vont à `HOUSE` ; un paiement ne peut être enregistré qu'une fois et seulement après approbation ; un administrateur ne peut pas traiter son propre retrait.
+
 Android : pour que le lien WhatsApp s'ouvre, ajouter dans `android/app/src/main/AndroidManifest.xml` (généré par `flutter create`) un bloc `<queries>` avec une intention `VIEW` sur le schéma `https`.
 
 ## Prochaine étape
 
-Phase 4 : retraits et validation par l'administration.
+Phase 5 : moteur de tirage (création des tours, fermeture des mises, tirage vérifiable).
