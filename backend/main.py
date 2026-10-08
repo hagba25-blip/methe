@@ -1,6 +1,7 @@
 """Point d'entrée : uvicorn main:app --reload"""
 
-from contextlib import asynccontextmanager
+import asyncio
+from contextlib import asynccontextmanager, suppress
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -8,13 +9,19 @@ from fastapi.middleware.cors import CORSMiddleware
 from app import db
 from app.api.router import api_router
 from app.config import get_settings
+from app.draw import engine
 from app.security.rate_limit import RateLimitMiddleware
 
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     await db.open_pool()
+    task = asyncio.create_task(engine.run_forever()) if get_settings().draw_engine_enabled else None
     yield
+    if task is not None:
+        task.cancel()
+        with suppress(asyncio.CancelledError):
+            await task
     await db.close_pool()
 
 
