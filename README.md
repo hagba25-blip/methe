@@ -114,6 +114,12 @@ flutter run -d chrome --dart-define=SUPABASE_URL=… --dart-define=SUPABASE_PUBL
 | `GET /v1/admin/actions?before=` | admin, super_admin | journal des actions de l'administration |
 | `GET /v1/admin/risk-events?state=&client_id=` · `POST /v1/admin/risk-events/{id}/resolve` | administration (clôture : finance, admin) | alertes anti-fraude et leur clôture avec explication |
 | `POST /v1/admin/users/{public_id}/status` | admin, super_admin | suspendre, bloquer ou réactiver un compte (motif obligatoire) |
+| `GET /v1/support/help?language=` | joueur | questions fréquentes publiées, lien WhatsApp du support, horaires |
+| `GET /v1/support/tickets` · `POST /v1/support/tickets` · `GET /v1/support/tickets/{id}` | joueur | mes demandes d'aide ; nouvelle demande (catégorie, titre, référence, message) ; conversation (marquée comme lue) |
+| `POST /v1/support/tickets/{id}/messages` · `/close` | joueur | répondre (rouvre une demande résolue) ; fermer quand le problème est réglé |
+| `GET /v1/admin/support/tickets?state=&client_id=` (todo, answered, done, all) | personnel | file du support, la plus ancienne demande à traiter en premier |
+| `GET /v1/admin/support/tickets/{id}` · `POST …/messages` · `POST …/status` | personnel | conversation ; réponse (le joueur est notifié) ; résoudre, fermer ou remettre à traiter |
+| `GET /v1/admin/faq` · `POST /v1/admin/faq` · `PATCH /v1/admin/faq/{id}` · `DELETE /v1/admin/faq/{id}` | personnel (écriture : support, admin) | gérer les questions fréquentes (brouillon ou publiée) |
 | `GET /v1/withdrawals/info` | joueur | solde, minimum, maximum, frais, raison d'un blocage, numéro par défaut |
 | `POST /v1/withdrawals` (en-tête `Idempotency-Key`) · `GET /v1/withdrawals` · `POST /v1/withdrawals/{id}/cancel` | joueur | demande EN ATTENTE (montant bloqué aussitôt) ; historique ; annulation tant qu'elle est EN ATTENTE |
 | `GET /v1/admin/withdrawals?status=` | personnel | file des retraits (plus anciens d'abord) avec solde du client |
@@ -134,8 +140,10 @@ Règles des paris : deux modes de gain, `fixed` (gain = mise × cote, connu d'av
 
 Anti-fraude (migration 0013) : plus de 30 paris par minute pour un même joueur sont refusés (anti-robot). Les autres contrôles lèvent une **alerte** à examiner, sans bloquer d'argent : retrait vers le numéro d'un autre compte (comptes multiples), retrait sans avoir misé au moins 100 % des dépôts des 30 derniers jours, retrait moins d'une heure après un dépôt, gain d'au moins 500 000. Les seuils sont dans `app_settings` (`betting.max_bets_per_minute`, `risk.*`). Les alertes apparaissent sur la file des retraits, dans Administration > Alertes et sur la fiche client ; chacune est close avec une explication. Un admin peut suspendre (plus de paris, dépôts ni retraits), bloquer (en plus, portefeuille gelé) ou réactiver un compte, avec motif obligatoire ; seul un super admin peut le faire pour un membre de l'équipe, et personne pour son propre compte. Chaque action est tracée dans `admin_actions`, chaque modification des tables sensibles dans `audit_logs`. L'API ajoute des en-têtes de sécurité et limite les requêtes par adresse IP ; derrière un hébergeur avec proxy, régler `TRUSTED_PROXY_HOPS=1` pour que la limite ne puisse pas être contournée avec un faux `X-Forwarded-For`.
 
+Support client (migration 0014) : depuis Profil > Aide et support, le joueur lit les questions fréquentes (avec recherche), ouvre une demande et suit la conversation ; le détail d'un pari ou d'une transaction propose « Un problème ? » avec la référence déjà remplie. Un compte suspendu ou bloqué peut toujours écrire. L'équipe traite la file dans Administration > Support ; chaque réponse envoie une notification au joueur. Les messages ne sont jamais modifiés ni supprimés. Limites anti-spam : 5 demandes ouvertes et 20 messages par heure par joueur (`support.*` dans `app_settings`). Le numéro WhatsApp du support s'affiche si `support.whatsapp_number` est renseigné, par exemple `update public.app_settings set value = '"+228 90 00 00 00"' where key = 'support.whatsapp_number';`.
+
 Android : pour que le lien WhatsApp s'ouvre, ajouter dans `android/app/src/main/AndroidManifest.xml` (généré par `flutter create`) un bloc `<queries>` avec une intention `VIEW` sur le schéma `https`.
 
 ## Prochaine étape
 
-Support client (messages, questions fréquentes).
+Tests complets de bout en bout, puis déploiement (Flutter Web, backend, Supabase).

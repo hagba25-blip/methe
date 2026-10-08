@@ -8,6 +8,7 @@ import '../providers/providers.dart';
 import '../screens/admin/admin_dashboard_screen.dart';
 import '../screens/admin/admin_deposits_screen.dart';
 import '../screens/admin/admin_risk_screen.dart';
+import '../screens/admin/admin_support_screen.dart';
 import '../screens/admin/admin_users_screen.dart';
 import '../screens/admin/admin_withdrawals_screen.dart';
 import '../screens/auth/login_screen.dart';
@@ -21,8 +22,9 @@ import '../screens/lonato/lonato_screen.dart';
 import '../screens/profile/edit_profile_screen.dart';
 import '../screens/results/results_screen.dart';
 import '../screens/profile/profile_screen.dart';
+import '../screens/support/help_screen.dart';
+import '../screens/support/ticket_screen.dart';
 import '../screens/wallet/wallet_screens.dart';
-import '../widgets/placeholder_view.dart';
 
 class _AuthRefresh extends ChangeNotifier {
   _AuthRefresh(Stream<dynamic> stream) {
@@ -60,6 +62,12 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/admin/users',
         builder: (_, state) => AdminUsersScreen(initialId: state.uri.queryParameters['id']),
       ),
+      GoRoute(path: '/admin/support', builder: (_, __) => const AdminSupportScreen()),
+      GoRoute(
+        path: '/admin/support/:id',
+        builder: (_, state) => AdminTicketScreen(id: state.pathParameters['id']!),
+      ),
+      GoRoute(path: '/admin/faq', builder: (_, __) => const AdminFaqScreen()),
       GoRoute(path: '/admin/deposits', builder: (_, __) => const AdminDepositsScreen()),
       GoRoute(path: '/admin/withdrawals', builder: (_, __) => const AdminWithdrawalsScreen()),
       ShellRoute(
@@ -80,7 +88,20 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(path: '/withdraw', builder: (_, __) => const WithdrawScreen()),
           GoRoute(path: '/results', builder: (_, __) => const ResultsScreen()),
           GoRoute(path: '/transactions', builder: (_, __) => const WalletScreen()),
-          GoRoute(path: '/support', builder: (_, __) => const PlaceholderView('Support', phase: 12)),
+          GoRoute(
+            path: '/support',
+            builder: (_, __) => const HelpScreen(),
+            routes: [
+              GoRoute(
+                path: 'new',
+                builder: (_, state) => NewTicketScreen(
+                  category: state.uri.queryParameters['category'],
+                  reference: state.uri.queryParameters['ref'],
+                ),
+              ),
+              GoRoute(path: 'ticket/:id', builder: (_, state) => TicketScreen(id: state.pathParameters['id']!)),
+            ],
+          ),
           GoRoute(
             path: '/profile',
             builder: (_, __) => const ProfileScreen(),
