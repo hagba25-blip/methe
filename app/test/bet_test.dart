@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:methe/models/bet.dart';
+import 'package:methe/models/period.dart';
 
 void main() {
   final type = GameType.fromJson({
@@ -36,6 +37,9 @@ void main() {
     expect(b.status.label, 'GAGNÉ');
     expect(b.resultFruit, 'KIWI');
     expect(b.actualPayout, 5000);
+    expect(b.roundId, 'r');
+    expect(b.odds, {1: 50.0});
+    expect(b.settledAt, isNotNull);
   });
 
   test('pari mutuel : gain estimé', () {
@@ -70,5 +74,22 @@ void main() {
     expect(perme.oddsFor(3), [(3, 900.0), (2, 100.0)]);
     expect(perme.oddsFor(4), isEmpty);
     expect(perme.isPool, isFalse);
+  });
+
+  test('bilan des paris', () {
+    final s = BetSummary.fromJson({
+      'bet_count': 5, 'pending_count': 1, 'won_count': 1, 'lost_count': 3, 'total_staked': 500,
+      'pending_stake': 100, 'total_won': 900, 'best_win': 900, 'net': 500,
+    });
+    expect(s.net, 500);
+    expect(s.pendingStake, 100);
+  });
+
+  test('périodes d\'historique', () {
+    final now = DateTime(2026, 10, 8, 15, 30);
+    expect(HistoryPeriod.today.since(now), DateTime(2026, 10, 8));
+    expect(HistoryPeriod.week.since(now), DateTime(2026, 10, 2));
+    expect(HistoryPeriod.month.since(now), DateTime(2026, 9, 9));
+    expect(HistoryPeriod.all.since(now), isNull);
   });
 }

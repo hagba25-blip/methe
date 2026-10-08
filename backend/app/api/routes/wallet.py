@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -25,15 +26,15 @@ async def list_transactions(
     limit: int = Query(default=20, ge=1, le=100),
     cursor: int | None = Query(default=None, ge=1, description="next_cursor de la page précédente"),
     kind: Literal["deposits", "withdrawals", "bets", "adjustments"] | None = None,
+    since: datetime | None = Query(default=None, description="opérations à partir de cette date"),
 ) -> TransactionPage:
     async with db.transaction() as conn:
         rows = await wallet.list_user_transactions(
-            conn, user.id, limit + 1, cursor, TX_FILTERS[kind] if kind else None)
+            conn, user.id, limit + 1, cursor, TX_FILTERS[kind] if kind else None, since)
     has_more = len(rows) > limit
     rows = rows[:limit]
     items = [
-        TransactionItem(**{k: v for k, v in r.items() if k != "description"},
-                        label=TX_LABELS.get(r["tx_type"], r["tx_type"]))
+        TransactionItem(**r, label=TX_LABELS.get(r["tx_type"], r["tx_type"]))
         for r in rows
     ]
     return TransactionPage(items=items, next_cursor=items[-1].id if has_more and items else None)

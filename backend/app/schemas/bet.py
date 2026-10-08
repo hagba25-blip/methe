@@ -67,6 +67,18 @@ class BetView(BaseModel):
 BetFilter = Literal["pending", "won", "lost", "refunded"]
 
 
+class BetSummary(BaseModel):
+    bet_count: int
+    pending_count: int
+    won_count: int
+    lost_count: int
+    total_staked: int
+    pending_stake: int
+    total_won: int
+    best_win: int
+    net: int
+
+
 class PoolState(BaseModel):
     round_id: UUID
     total_stakes: int

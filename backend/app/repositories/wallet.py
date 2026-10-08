@@ -24,6 +24,7 @@ async def list_user_transactions(
     limit: int,
     before_id: int | None = None,
     tx_types: list[str] | None = None,
+    since: datetime | None = None,
 ) -> list[dict]:
     """Historique paginé par curseur (id décroissant)."""
     cur = await conn.execute(
@@ -35,10 +36,11 @@ async def list_user_transactions(
         where t.user_id = %(user_id)s
           and (%(before_id)s::bigint is null or t.id < %(before_id)s)
           and (%(types)s::public.tx_type[] is null or t.tx_type = any(%(types)s::public.tx_type[]))
+          and (%(since)s::timestamptz is null or t.created_at >= %(since)s::timestamptz)
         order by t.id desc
         limit %(limit)s
         """,
-        {"user_id": user_id, "before_id": before_id, "types": tx_types, "limit": limit},
+        {"user_id": user_id, "before_id": before_id, "types": tx_types, "since": since, "limit": limit},
     )
     return await cur.fetchall()
 

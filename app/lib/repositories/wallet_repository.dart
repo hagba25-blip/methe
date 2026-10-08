@@ -6,10 +6,12 @@ class WalletRepository {
   WalletRepository(this._api);
   final ApiClient _api;
 
-  Future<TransactionPage> transactions({TxFilter filter = TxFilter.all, int? cursor, int limit = 20}) async {
+  Future<TransactionPage> transactions(
+      {TxFilter filter = TxFilter.all, int? cursor, DateTime? since, int limit = 20}) async {
     final query = <String, String>{
       'limit': '$limit',
       if (cursor != null) 'cursor': '$cursor',
+      if (since != null) 'since': since.toUtc().toIso8601String(),
       if (filter.apiValue != null) 'kind': filter.apiValue!,
     };
     final qs = Uri(queryParameters: query).query;
