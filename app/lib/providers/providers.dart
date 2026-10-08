@@ -2,7 +2,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../models/profile.dart';
+import '../models/public_settings.dart';
 import '../repositories/profile_repository.dart';
+import '../repositories/wallet_repository.dart';
 import '../services/api_client.dart';
 import '../services/auth_service.dart';
 
@@ -17,4 +19,14 @@ final authStateProvider = StreamProvider<AuthState>((ref) => ref.watch(authServi
 final meProvider = FutureProvider<Profile>((ref) {
   ref.watch(authStateProvider);
   return ref.watch(profileRepositoryProvider).me();
+});
+
+final walletRepositoryProvider = Provider((ref) => WalletRepository(ref.watch(apiClientProvider)));
+
+final publicSettingsProvider = FutureProvider<PublicSettings>((ref) async {
+  try {
+    return await ref.watch(walletRepositoryProvider).publicSettings();
+  } catch (_) {
+    return PublicSettings.fallback;
+  }
 });

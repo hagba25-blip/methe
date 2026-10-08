@@ -11,6 +11,13 @@ class ProfileRepository {
 
   Future<Profile> me() async => Profile.fromJson(await _api.get('/v1/me'));
 
+  Future<Profile> update({String? firstName, String? lastName, String? languageCode}) async =>
+      Profile.fromJson(await _api.patch('/v1/me', {
+        if (firstName != null) 'first_name': firstName,
+        if (lastName != null) 'last_name': lastName,
+        if (languageCode != null) 'language_code': languageCode,
+      }));
+
   Future<LocaleGuess> detectLocale() async => LocaleGuess.fromJson(await _api.get('/v1/locale/detect'));
 
   /// Lecture directe autorisée par RLS (table de référence publique).
