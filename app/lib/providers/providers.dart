@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../models/profile.dart';
 import '../models/public_settings.dart';
+import '../repositories/deposit_repository.dart';
 import '../repositories/profile_repository.dart';
 import '../repositories/wallet_repository.dart';
 import '../services/api_client.dart';
@@ -30,3 +31,5 @@ final publicSettingsProvider = FutureProvider<PublicSettings>((ref) async {
     return PublicSettings.fallback;
   }
 });
+
+final depositRepositoryProvider = Provider((ref) => DepositRepository(ref.watch(apiClientProvider)));

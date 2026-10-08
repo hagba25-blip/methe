@@ -8,4 +8,4 @@ run() { psql -X -q -v ON_ERROR_STOP=1 -d methe_test -f "$1"; }
 run tests/supabase_stub.sql
 for f in migrations/*.sql; do echo "→ $f"; run "$f"; done
 echo "→ seed.sql"; run seed.sql
-echo "→ tests"; run tests/test_schema.sql
+echo "→ tests"; run tests/test_schema.sql; run tests/test_deposits.sql

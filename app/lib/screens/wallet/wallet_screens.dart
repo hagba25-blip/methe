@@ -8,6 +8,8 @@ import '../../widgets/balance_card.dart';
 import '../../widgets/placeholder_view.dart';
 import 'transactions_list.dart';
 
+export 'deposit_screen.dart';
+
 /// SOLDE : carte du solde + historique des transactions.
 class WalletScreen extends ConsumerWidget {
   const WalletScreen({super.key});
@@ -34,12 +36,6 @@ class WalletScreen extends ConsumerWidget {
       ),
     );
   }
-}
-
-class DepositScreen extends StatelessWidget {
-  const DepositScreen({super.key});
-  @override
-  Widget build(BuildContext context) => const PlaceholderView('Dépôt via agents WhatsApp', phase: 3);
 }
 
 class WithdrawScreen extends StatelessWidget {

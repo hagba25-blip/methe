@@ -15,3 +15,6 @@ int _pow10(int n) {
   }
   return r;
 }
+
+/// Nombre de décimales d'une devise (en attendant de lire la table currencies).
+int decimalsFor(String currency) => const {'XOF': 0, 'XAF': 0}[currency] ?? 2;

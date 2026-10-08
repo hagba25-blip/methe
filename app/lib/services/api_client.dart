@@ -34,6 +34,13 @@ class ApiClient {
     return _decode(res);
   }
 
+  Future<List<dynamic>> getList(String path) async {
+    final res = await _http.get(Uri.parse('${Env.apiBaseUrl}$path'), headers: _headers);
+    final body = res.body.isEmpty ? [] : jsonDecode(utf8.decode(res.bodyBytes));
+    if (res.statusCode >= 400 || body is! List) _decode(res);
+    return body as List<dynamic>;
+  }
+
   Future<Map<String, dynamic>> post(String path, Map<String, dynamic> body, {String? idempotencyKey}) async {
     final res = await _http.post(
       Uri.parse('${Env.apiBaseUrl}$path'),
