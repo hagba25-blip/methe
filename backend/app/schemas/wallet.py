@@ -29,8 +29,8 @@ class TransactionPage(BaseModel):
 
 TX_LABELS = {
     "deposit": "Dépôt",
-    "withdrawal_hold": "Retrait (en cours)",
-    "withdrawal_release": "Retrait annulé",
+    "withdrawal_hold": "Retrait",
+    "withdrawal_release": "Retrait annulé (remboursé)",
     "withdrawal_payout": "Retrait",
     "bet_stake": "Mise",
     "bet_win": "Gain pari",

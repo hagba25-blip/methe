@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 
 import '../providers/providers.dart';
 import '../screens/admin/admin_deposits_screen.dart';
+import '../screens/admin/admin_withdrawals_screen.dart';
 import '../screens/auth/login_screen.dart';
 import '../screens/auth/register_screen.dart';
 import '../screens/bets/bets_screen.dart';
@@ -48,6 +49,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/login', builder: (_, __) => const LoginScreen()),
       GoRoute(path: '/register', builder: (_, __) => const RegisterScreen()),
       GoRoute(path: '/admin/deposits', builder: (_, __) => const AdminDepositsScreen()),
+      GoRoute(path: '/admin/withdrawals', builder: (_, __) => const AdminWithdrawalsScreen()),
       ShellRoute(
         builder: (_, state, child) => AppShell(location: state.matchedLocation, child: child),
         routes: [

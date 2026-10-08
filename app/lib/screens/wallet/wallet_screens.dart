@@ -5,10 +5,10 @@ import 'package:go_router/go_router.dart';
 import '../../models/public_settings.dart';
 import '../../providers/providers.dart';
 import '../../widgets/balance_card.dart';
-import '../../widgets/placeholder_view.dart';
 import 'transactions_list.dart';
 
 export 'deposit_screen.dart';
+export 'withdraw_screen.dart';
 
 /// SOLDE : carte du solde + historique des transactions.
 class WalletScreen extends ConsumerWidget {
@@ -36,10 +36,4 @@ class WalletScreen extends ConsumerWidget {
       ),
     );
   }
-}
-
-class WithdrawScreen extends StatelessWidget {
-  const WithdrawScreen({super.key});
-  @override
-  Widget build(BuildContext context) => const PlaceholderView('Retrait', phase: 4);
 }
