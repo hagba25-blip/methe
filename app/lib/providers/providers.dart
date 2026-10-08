@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../models/profile.dart';
 import '../models/public_settings.dart';
+import '../repositories/admin_repository.dart';
 import '../repositories/bet_repository.dart';
 import '../repositories/deposit_repository.dart';
 import '../repositories/profile_repository.dart';
@@ -39,5 +40,6 @@ final depositRepositoryProvider = Provider((ref) => DepositRepository(ref.watch(
 
 final withdrawalRepositoryProvider = Provider((ref) => WithdrawalRepository(ref.watch(apiClientProvider)));
 final roundRepositoryProvider = Provider((ref) => RoundRepository(ref.watch(apiClientProvider)));
+final adminRepositoryProvider = Provider((ref) => AdminRepository(ref.watch(apiClientProvider)));
 final betRepositoryProvider = Provider((ref) => BetRepository(ref.watch(apiClientProvider)));
 final gamesProvider = FutureProvider((ref) => ref.watch(betRepositoryProvider).games());

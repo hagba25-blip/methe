@@ -53,6 +53,12 @@ class ProfileScreen extends ConsumerWidget {
         ),
         if (p.isStaff)
           ListTile(
+            leading: const Icon(Icons.dashboard_outlined),
+            title: const Text('Administration — Tableau de bord'),
+            onTap: () => context.go('/admin'),
+          ),
+        if (p.isStaff)
+          ListTile(
             leading: const Icon(Icons.admin_panel_settings_outlined),
             title: const Text('Administration — Dépôts'),
             onTap: () => context.go('/admin/deposits'),

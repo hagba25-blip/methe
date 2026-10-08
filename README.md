@@ -110,6 +110,8 @@ flutter run -d chrome --dart-define=SUPABASE_URL=… --dart-define=SUPABASE_PUBL
 | `POST /v1/bets` (en-tête `Idempotency-Key`) | joueur | pari : mise débitée, cotes figées ; un double envoi ne débite qu'une fois |
 | `GET /v1/bets?status=&game=&since=&before=` · `GET /v1/bets/{id}` | joueur | mes paris avec résultat du tirage et gain |
 | `GET /v1/bets/summary?game=&since=` | joueur | bilan : nombre de paris, total misé, total gagné, résultat net des paris réglés |
+| `GET /v1/admin/dashboard?period=&currency=` (période : today, 7d, 30d, 90d) | administration | tableau de bord : dépôts et retraits à traiter, mises, gains versés, produit brut par jeu et par jour, joueurs, soldes système, derniers tirages |
+| `GET /v1/admin/actions?before=` | admin, super_admin | journal des actions de l'administration |
 | `GET /v1/withdrawals/info` | joueur | solde, minimum, maximum, frais, raison d'un blocage, numéro par défaut |
 | `POST /v1/withdrawals` (en-tête `Idempotency-Key`) · `GET /v1/withdrawals` · `POST /v1/withdrawals/{id}/cancel` | joueur | demande EN ATTENTE (montant bloqué aussitôt) ; historique ; annulation tant qu'elle est EN ATTENTE |
 | `GET /v1/admin/withdrawals?status=` | personnel | file des retraits (plus anciens d'abord) avec solde du client |
@@ -132,4 +134,4 @@ Android : pour que le lien WhatsApp s'ouvre, ajouter dans `android/app/src/main/
 
 ## Prochaine étape
 
-Tableau de bord administrateur.
+Sécurité, audit et anti-fraude.
