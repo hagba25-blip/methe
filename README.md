@@ -60,6 +60,19 @@ flutter pub get
 flutter run -d chrome --dart-define=SUPABASE_URL=… --dart-define=SUPABASE_PUBLISHABLE_KEY=… --dart-define=API_BASE_URL=http://localhost:8000
 ```
 
+## Tests
+
+Tous les tests sont rejoués automatiquement par GitHub à chaque modification (onglet **Actions**, fichier `.github/workflows/ci.yml`). Une pull request dont un test échoue est marquée en rouge et ne doit pas être fusionnée.
+
+| Niveau | Où | Ce qui est vérifié |
+|---|---|---|
+| Base de données | `supabase/tests/*.sql` | inscription, dépôts, retraits, tirages vérifiables, paris et règlement (200 tirages simulés), anti-fraude, support, droits RLS |
+| Intégrité de l'argent | `supabase/tests/check_invariants.sql` | chaque journal est équilibré, chaque solde = somme de ses mouvements sans trou, aucun joueur en négatif, montant bloqué = retraits en cours, pari mutuel jamais déficitaire, paris tous réglés et cohérents |
+| API | `backend/tests/` | chaque route, les droits par rôle, et un **parcours complet** (`test_scenario.py`) : inscription → dépôt validé → paris → tirage → retrait payé → support, puis recompte du solde depuis le ledger |
+| Application | `app/test/` | modèles, et écrans : Fruits, Lonato (choix, cotes, solde insuffisant, pari envoyé), aide et conversation avec le support, file du support, alertes, fiche client |
+
+Le contrôle d'intégrité ne modifie rien : il peut aussi être lancé sur la vraie base (Supabase > SQL Editor, coller le contenu du fichier) pour un audit ; il affiche « INTÉGRITÉ OK » ou la liste des anomalies.
+
 ## Choix d'architecture
 
 | Sujet | Décision |
@@ -146,4 +159,4 @@ Android : pour que le lien WhatsApp s'ouvre, ajouter dans `android/app/src/main/
 
 ## Prochaine étape
 
-Tests complets de bout en bout, puis déploiement (Flutter Web, backend, Supabase).
+Déploiement : application Web Flutter, backend Python, Supabase (production).
