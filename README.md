@@ -93,7 +93,7 @@ flutter run -d chrome --dart-define=SUPABASE_URL=… --dart-define=SUPABASE_PUBL
 |---|---|---|
 | `GET /v1/me` · `PATCH /v1/me` | joueur | profil ; seuls prénom, nom, langue, avatar sont modifiables |
 | `GET /v1/wallet` | joueur | solde et devise |
-| `GET /v1/wallet/transactions?kind=&cursor=` | joueur | historique paginé (dépôts, retraits, paris, ajustements) |
+| `GET /v1/wallet/transactions?kind=&since=&cursor=` | joueur | historique paginé (dépôts, retraits, paris, ajustements), filtrable par période |
 | `GET /v1/settings/public` | public | mise minimum, retrait minimum/maximum… |
 | `GET /v1/admin/users/{ID}` | personnel | fiche client §30 ; chaque consultation est tracée dans `admin_actions` |
 | `GET /v1/agents` | public | agents de dépôt disponibles |
@@ -108,7 +108,8 @@ flutter run -d chrome --dart-define=SUPABASE_URL=… --dart-define=SUPABASE_PUBL
 | `GET /v1/games` | public | jeux, types de pari, cotes jouables (version en vigueur), fruits |
 | `GET /v1/rounds/{id}/pool` | public | cagnotte d'un tour mutuel (total misé, poids par fruit) pour le gain estimé |
 | `POST /v1/bets` (en-tête `Idempotency-Key`) | joueur | pari : mise débitée, cotes figées ; un double envoi ne débite qu'une fois |
-| `GET /v1/bets?status=&game=&before=` · `GET /v1/bets/{id}` | joueur | mes paris avec résultat du tirage et gain |
+| `GET /v1/bets?status=&game=&since=&before=` · `GET /v1/bets/{id}` | joueur | mes paris avec résultat du tirage et gain |
+| `GET /v1/bets/summary?game=&since=` | joueur | bilan : nombre de paris, total misé, total gagné, résultat net des paris réglés |
 | `GET /v1/withdrawals/info` | joueur | solde, minimum, maximum, frais, raison d'un blocage, numéro par défaut |
 | `POST /v1/withdrawals` (en-tête `Idempotency-Key`) · `GET /v1/withdrawals` · `POST /v1/withdrawals/{id}/cancel` | joueur | demande EN ATTENTE (montant bloqué aussitôt) ; historique ; annulation tant qu'elle est EN ATTENTE |
 | `GET /v1/admin/withdrawals?status=` | personnel | file des retraits (plus anciens d'abord) avec solde du client |
@@ -131,4 +132,4 @@ Android : pour que le lien WhatsApp s'ouvre, ajouter dans `android/app/src/main/
 
 ## Prochaine étape
 
-Historique complet des paris et des transactions.
+Tableau de bord administrateur.

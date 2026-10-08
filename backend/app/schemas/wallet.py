@@ -20,6 +20,7 @@ class TransactionItem(BaseModel):
     balance_after: int
     status: str
     created_at: datetime
+    description: str | None = None
 
 
 class TransactionPage(BaseModel):

@@ -8,6 +8,7 @@ class WalletTransaction {
     required this.balanceBefore,
     required this.balanceAfter,
     required this.createdAt,
+    this.description,
   });
 
   final int id;
@@ -18,6 +19,7 @@ class WalletTransaction {
   final int balanceBefore;
   final int balanceAfter;
   final DateTime createdAt;
+  final String? description;
 
   bool get isCredit => amount > 0;
 
@@ -30,6 +32,7 @@ class WalletTransaction {
         balanceBefore: j['balance_before'] as int,
         balanceAfter: j['balance_after'] as int,
         createdAt: DateTime.parse(j['created_at'] as String).toLocal(),
+        description: j['description'] as String?,
       );
 }
 

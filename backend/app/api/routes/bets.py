@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
 
 from app import db
 from app.repositories import bets
-from app.schemas.bet import BetFilter, BetRequest, BetView, GameView, PoolState
+from app.schemas.bet import BetFilter, BetRequest, BetSummary, BetView, GameView, PoolState
 from app.security.auth import CurrentUser, get_current_user
 from app.services.db_errors import business_errors
 
@@ -55,10 +55,22 @@ async def my_bets(
     game: str | None = Query(default=None, pattern=r"^[A-Z]{2,30}$"),
     limit: int = Query(default=20, ge=1, le=100),
     before: datetime | None = Query(default=None, description="placed_at du dernier pari de la page précédente"),
+    since: datetime | None = Query(default=None, description="paris placés à partir de cette date"),
 ) -> list[BetView]:
     async with db.transaction() as conn:
-        rows = await bets.list_for_user(conn, user.id, status_filter, game, limit, before)
+        rows = await bets.list_for_user(conn, user.id, status_filter, game, limit, before, since)
     return [BetView(**r) for r in rows]
+
+
+@router.get("/bets/summary", response_model=BetSummary)
+async def my_bets_summary(
+    user: CurrentUser = Depends(get_current_user),
+    game: str | None = Query(default=None, pattern=r"^[A-Z]{2,30}$"),
+    since: datetime | None = Query(default=None, description="paris placés à partir de cette date"),
+) -> BetSummary:
+    """Bilan du joueur : nombre de paris, total misé, total gagné, résultat net des paris réglés."""
+    async with db.transaction() as conn:
+        return BetSummary(**await bets.summary(conn, user.id, game, since))
 
 
 @router.get("/bets/{bet_id}", response_model=BetView)

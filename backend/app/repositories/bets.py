@@ -55,7 +55,8 @@ async def get(conn: AsyncConnection, bet_id: UUID, user_id: UUID) -> dict | None
 
 
 async def list_for_user(
-    conn: AsyncConnection, user_id: UUID, statuses: list[str] | None, game: str | None, limit: int, before
+    conn: AsyncConnection, user_id: UUID, statuses: list[str] | None, game: str | None, limit: int, before,
+    since=None,
 ) -> list[dict]:
     cur = await conn.execute(
         f"""
@@ -64,11 +65,37 @@ async def list_for_user(
           and (%(statuses)s::text[] is null or b.status::text = any(%(statuses)s::text[]))
           and (%(game)s::text is null or b.game_code = %(game)s::text)
           and (%(before)s::timestamptz is null or b.placed_at < %(before)s::timestamptz)
+          and (%(since)s::timestamptz is null or b.placed_at >= %(since)s::timestamptz)
         order by b.placed_at desc limit %(limit)s
         """,
-        {"user": user_id, "statuses": statuses, "game": game, "before": before, "limit": limit},
+        {"user": user_id, "statuses": statuses, "game": game, "before": before, "since": since, "limit": limit},
     )
     return await cur.fetchall()
+
+
+async def summary(conn: AsyncConnection, user_id: UUID, game: str | None, since) -> dict:
+    """Bilan des paris d'un joueur ; les paris remboursés ou annulés ne comptent pas comme misés."""
+    cur = await conn.execute(
+        """
+        select count(*) as bet_count,
+               count(*) filter (where status = 'pending') as pending_count,
+               count(*) filter (where status = 'won') as won_count,
+               count(*) filter (where status = 'lost') as lost_count,
+               coalesce(sum(stake) filter (where status in ('pending', 'won', 'lost')), 0)::bigint as total_staked,
+               coalesce(sum(stake) filter (where status = 'pending'), 0)::bigint as pending_stake,
+               coalesce(sum(actual_payout) filter (where status = 'won'), 0)::bigint as total_won,
+               coalesce(max(actual_payout) filter (where status = 'won'), 0)::bigint as best_win
+        from public.bets
+        where user_id = %(user)s
+          and (%(game)s::text is null or game_code = %(game)s::text)
+          and (%(since)s::timestamptz is null or placed_at >= %(since)s::timestamptz)
+        """,
+        {"user": user_id, "game": game, "since": since},
+    )
+    row = await cur.fetchone()
+    # Résultat net sur les paris déjà réglés : gains − mises réglées.
+    row["net"] = row["total_won"] - (row["total_staked"] - row["pending_stake"])
+    return row
 
 
 async def pool_state(conn: AsyncConnection, round_id: UUID) -> dict:

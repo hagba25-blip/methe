@@ -142,6 +142,7 @@ class Bet {
   const Bet({
     required this.id,
     required this.reference,
+    required this.roundId,
     required this.roundNumber,
     required this.drawAt,
     required this.gameCode,
@@ -154,12 +155,15 @@ class Bet {
     required this.actualPayout,
     required this.status,
     required this.placedAt,
+    this.odds = const {},
+    this.settledAt,
     this.resultFruit,
     this.resultNumbers,
   });
 
   final String id;
   final String reference;
+  final String roundId;
   final int roundNumber;
   final DateTime drawAt;
   final String gameCode;
@@ -172,6 +176,10 @@ class Bet {
   final int actualPayout;
   final BetStatus status;
   final DateTime placedAt;
+
+  /// Cotes figées sur le ticket : nombre trouvé → multiplicateur (ou poids en pari mutuel).
+  final Map<int, double> odds;
+  final DateTime? settledAt;
   final String? resultFruit;
   final List<int>? resultNumbers;
 
@@ -180,6 +188,7 @@ class Bet {
     return Bet(
       id: j['id'] as String,
       reference: j['reference'] as String,
+      roundId: j['round_id'] as String,
       roundNumber: j['round_number'] as int,
       drawAt: DateTime.parse(j['draw_at'] as String).toLocal(),
       gameCode: j['game_code'] as String,
@@ -192,8 +201,52 @@ class Bet {
       actualPayout: j['actual_payout'] as int,
       status: BetStatus.parse(j['status'] as String),
       placedAt: DateTime.parse(j['placed_at'] as String).toLocal(),
+      odds: {
+        for (final e in ((j['odds_snapshot'] as Map<String, dynamic>?) ?? const {}).entries)
+          int.parse(e.key): (e.value as num).toDouble()
+      },
+      settledAt: j['settled_at'] == null ? null : DateTime.parse(j['settled_at'] as String).toLocal(),
       resultFruit: result?['fruit'] as String?,
       resultNumbers: (result?['numbers'] as List?)?.cast<int>(),
     );
   }
+}
+
+/// Bilan des paris d'un joueur sur une période.
+class BetSummary {
+  const BetSummary({
+    required this.betCount,
+    required this.pendingCount,
+    required this.wonCount,
+    required this.lostCount,
+    required this.totalStaked,
+    required this.pendingStake,
+    required this.totalWon,
+    required this.bestWin,
+    required this.net,
+  });
+
+  final int betCount;
+  final int pendingCount;
+  final int wonCount;
+  final int lostCount;
+  final int totalStaked;
+  final int pendingStake;
+  final int totalWon;
+  final int bestWin;
+
+  /// Gains − mises des paris déjà réglés.
+  final int net;
+
+  factory BetSummary.fromJson(Map<String, dynamic> j) => BetSummary(
+        betCount: j['bet_count'] as int,
+        pendingCount: j['pending_count'] as int,
+        wonCount: j['won_count'] as int,
+        lostCount: j['lost_count'] as int,
+        totalStaked: j['total_staked'] as int,
+        pendingStake: j['pending_stake'] as int,
+        totalWon: j['total_won'] as int,
+        bestWin: j['best_win'] as int,
+        net: j['net'] as int,
+      );
 }
