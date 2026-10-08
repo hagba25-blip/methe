@@ -2,7 +2,7 @@
 
 Flutter (Android + Web) · Backend Python (FastAPI) · Supabase (PostgreSQL, Auth, RLS)
 
-État : **Phase 2 livrée** (profil, ID client, portefeuille et historique). Phase 1 : architecture, base de données, authentification.
+État : **Phase 3 livrée** (dépôts via agents WhatsApp, validation admin, crédit manuel). Phases 1–2 : architecture, authentification, profil, portefeuille.
 
 ## Arborescence
 
@@ -16,7 +16,8 @@ methe/
 │   │   ├── …0004_games_rounds_bets.sql       jeux, tirages, règles versionnées, paris
 │   │   ├── …0005_admin_audit_notifications.sql
 │   │   ├── …0006_rls_grants.sql              Row Level Security + droits
-│   │   └── …0007_admin_bootstrap.sql         nommer un administrateur
+│   │   ├── …0007_admin_bootstrap.sql         nommer un administrateur
+│   │   └── …0008_deposits_flow.sql           demande, validation, refus, crédit manuel
 │   ├── seed.sql             # pays, agents, jeux, 20 fruits, règles v1, trésorerie
 │   └── tests/               # tests SQL exécutables sur un PostgreSQL local
 ├── backend/                 # API Python (structure du cahier des charges §47)
@@ -82,7 +83,7 @@ flutter run -d chrome --dart-define=SUPABASE_URL=… --dart-define=SUPABASE_PUBL
 
 À titre indicatif, avec les valeurs fournies le taux de redistribution est d'environ 56 % pour CHOX, 75 % pour PERME 2/2, 80 % pour PERME à 3 numéros.
 
-## API (phase 2)
+## API
 
 | Route | Accès | Rôle |
 |---|---|---|
@@ -91,12 +92,21 @@ flutter run -d chrome --dart-define=SUPABASE_URL=… --dart-define=SUPABASE_PUBL
 | `GET /v1/wallet/transactions?kind=&cursor=` | joueur | historique paginé (dépôts, retraits, paris, ajustements) |
 | `GET /v1/settings/public` | public | mise minimum, retrait minimum/maximum… |
 | `GET /v1/admin/users/{ID}` | personnel | fiche client §30 ; chaque consultation est tracée dans `admin_actions` |
+| `GET /v1/agents` | public | agents de dépôt disponibles |
+| `POST /v1/deposits` · `GET /v1/deposits` · `POST /v1/deposits/{id}/cancel` | joueur | demande EN ATTENTE + lien WhatsApp pré-rempli ; historique ; annulation |
+| `GET /v1/admin/deposits?status=` | personnel | file des dépôts à valider |
+| `POST /v1/admin/deposits/{id}/approve` · `/reject` | finance, admin | crédite via le ledger (montant corrigeable) ou refuse avec motif ; notification + trace |
+| `POST /v1/admin/users/{ID}/credit` (en-tête `Idempotency-Key`) | finance, admin | crédit manuel §31 ; un double clic ne crédite qu'une fois |
 
 **Nommer un administrateur** : créer d'abord son compte dans l'application, puis dans Supabase > SQL Editor :
 ```sql
 select private.grant_staff_role('vous@example.com', 'super_admin');
 ```
 
+Règles de sécurité des dépôts : ouvrir WhatsApp ne crédite rien ; un dépôt ne peut être validé qu'une fois ; un administrateur ne peut ni valider son propre dépôt ni se créditer lui-même ; 3 demandes en attente maximum par joueur ; montants min./max. dans `app_settings` (`deposit.*`).
+
+Android : pour que le lien WhatsApp s'ouvre, ajouter dans `android/app/src/main/AndroidManifest.xml` (généré par `flutter create`) un bloc `<queries>` avec une intention `VIEW` sur le schéma `https`.
+
 ## Prochaine étape
 
-Phase 3 : dépôt via les agents WhatsApp et validation par l'administration.
+Phase 4 : retraits et validation par l'administration.

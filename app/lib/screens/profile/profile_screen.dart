@@ -51,6 +51,12 @@ class ProfileScreen extends ConsumerWidget {
           title: const Text('Modifier profil'),
           onTap: () => context.go('/profile/edit'),
         ),
+        if (p.isStaff)
+          ListTile(
+            leading: const Icon(Icons.admin_panel_settings_outlined),
+            title: const Text('Administration — Dépôts'),
+            onTap: () => context.go('/admin/deposits'),
+          ),
         ListTile(
           leading: const Icon(Icons.history),
           title: const Text('Historique'),
