@@ -59,4 +59,16 @@ void main() {
     expect(t.isPool, isTrue);
     expect(t.commissionPercent, 10);
   });
+
+  test('Lonato PERME : cas jouables et cotes par nombre trouvé', () {
+    final perme = GameType.fromJson({
+      'code': 'PERME', 'name': 'PERME', 'min_selection': 2, 'max_selection': 10, 'min_stake': 50,
+      'odds': {'2': {'2': 300}, '3': {'2': 100, '3': 900}, '5': {'2': 30}},
+    });
+    expect(perme.playableCounts, [2, 3, 5]);
+    expect(perme.maxPlayable, 5);
+    expect(perme.oddsFor(3), [(3, 900.0), (2, 100.0)]);
+    expect(perme.oddsFor(4), isEmpty);
+    expect(perme.isPool, isFalse);
+  });
 }

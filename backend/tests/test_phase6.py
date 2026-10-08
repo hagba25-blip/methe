@@ -97,3 +97,29 @@ def test_my_bets_filters_and_privacy(client, fruits_round):
     assert all(x["status"] == "pending" for x in pending) and placed["id"] in {x["id"] for x in pending}
     assert client.get("/v1/bets", headers=auth(USER_B)).json() == [], "B ne voit pas les paris de A"
     assert client.get(f"/v1/bets/{placed['id']}", headers=auth(USER_B)).status_code == 404
+
+
+def test_lonato_perme_bet_fixed_odds(client, sql):
+    rid = str(uuid.uuid4())
+    number = sql.execute("select coalesce(max(round_number), 0) + 1 from public.game_rounds").fetchone()[0]
+    sql.execute(
+        "insert into public.game_rounds (id, game_code, round_number, opens_at, closes_at, draw_at) "
+        "values (%s, 'LONATO', %s, now() - interval '5 min', now() + interval '30 min', now() + interval '32 min')",
+        (rid, number))
+    sql.execute("select private.open_round(%s)", (rid,))
+    start = balance(client)
+    r = bet(client, rid, ["05", "17", "42"], 100, game_type="PERME")
+    assert r.status_code == 201, r.text
+    b = r.json()
+    assert b["selections"] == ["05", "17", "42"] and b["potential_payout"] == 90000
+    assert b["odds_snapshot"] == {"2": 100.0, "3": 900.0}
+    assert bet(client, rid, ["05", "17", "42", "60"], 100, game_type="PERME").status_code == 409, "4 numéros sans cote"
+    assert balance(client) == start - 100
+
+    sql.execute("update public.game_rounds set status = 'closed' where id = %s", (rid,))
+    sql.execute("select private.draw_round(%s)", (rid,))
+    settled = client.get(f"/v1/bets/{b['id']}", headers=auth(USER_A)).json()
+    found = len({5, 17, 42} & set(settled["round_result"]["numbers"]))
+    expected = {3: 90000, 2: 10000}.get(found, 0)
+    assert settled["actual_payout"] == expected and settled["status"] == ("won" if expected else "lost")
+    assert balance(client) == start - 100 + expected

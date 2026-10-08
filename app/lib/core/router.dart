@@ -14,6 +14,7 @@ import '../screens/fruits/fruits_screen.dart';
 import '../screens/games/games_screen.dart';
 import '../screens/home/app_shell.dart';
 import '../screens/home/home_screen.dart';
+import '../screens/lonato/lonato_screen.dart';
 import '../screens/profile/edit_profile_screen.dart';
 import '../screens/results/results_screen.dart';
 import '../screens/profile/profile_screen.dart';
@@ -59,7 +60,10 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: '/games',
             builder: (_, __) => const GamesScreen(),
-            routes: [GoRoute(path: 'fruits', builder: (_, __) => const FruitsScreen())],
+            routes: [
+              GoRoute(path: 'fruits', builder: (_, __) => const FruitsScreen()),
+              GoRoute(path: 'lonato', builder: (_, __) => const LonatoScreen()),
+            ],
           ),
           GoRoute(path: '/bets', builder: (_, __) => const BetsScreen()),
           GoRoute(path: '/wallet', builder: (_, __) => const WalletScreen()),

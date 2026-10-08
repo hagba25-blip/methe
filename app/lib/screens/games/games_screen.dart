@@ -20,13 +20,13 @@ class GamesScreen extends StatelessWidget {
           onTap: () => context.go('/games/fruits'),
         ),
       ),
-      const Card(
+      Card(
         child: ListTile(
-          leading: Text('🎱', style: TextStyle(fontSize: 32)),
-          title: Text('Lonato'),
-          subtitle: Text('5 numéros parmi 01–90 toutes les 3 heures · PERME, NAPE, CHOX\nBientôt disponible'),
-          isThreeLine: true,
-          enabled: false,
+          leading: const Text('🎱', style: TextStyle(fontSize: 32)),
+          title: const Text('Lonato'),
+          subtitle: const Text('5 numéros parmi 01–90 toutes les 3 heures · PERME, NAPE, CHOX'),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () => context.go('/games/lonato'),
         ),
       ),
     ]);
