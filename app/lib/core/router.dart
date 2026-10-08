@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../providers/providers.dart';
+import '../screens/admin/admin_dashboard_screen.dart';
 import '../screens/admin/admin_deposits_screen.dart';
 import '../screens/admin/admin_withdrawals_screen.dart';
 import '../screens/auth/login_screen.dart';
@@ -51,6 +52,7 @@ final routerProvider = Provider<GoRouter>((ref) {
     routes: [
       GoRoute(path: '/login', builder: (_, __) => const LoginScreen()),
       GoRoute(path: '/register', builder: (_, __) => const RegisterScreen()),
+      GoRoute(path: '/admin', builder: (_, __) => const AdminDashboardScreen()),
       GoRoute(path: '/admin/deposits', builder: (_, __) => const AdminDepositsScreen()),
       GoRoute(path: '/admin/withdrawals', builder: (_, __) => const AdminWithdrawalsScreen()),
       ShellRoute(
