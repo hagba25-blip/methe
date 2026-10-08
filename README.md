@@ -2,7 +2,7 @@
 
 Flutter (Android + Web) · Backend Python (FastAPI) · Supabase (PostgreSQL, Auth, RLS)
 
-État : **Phase 1 livrée** (architecture, base de données, authentification).
+État : **Phase 2 livrée** (profil, ID client, portefeuille et historique). Phase 1 : architecture, base de données, authentification.
 
 ## Arborescence
 
@@ -15,7 +15,8 @@ methe/
 │   │   ├── …0003_payments.sql                agents WhatsApp, dépôts, retraits
 │   │   ├── …0004_games_rounds_bets.sql       jeux, tirages, règles versionnées, paris
 │   │   ├── …0005_admin_audit_notifications.sql
-│   │   └── …0006_rls_grants.sql              Row Level Security + droits
+│   │   ├── …0006_rls_grants.sql              Row Level Security + droits
+│   │   └── …0007_admin_bootstrap.sql         nommer un administrateur
 │   ├── seed.sql             # pays, agents, jeux, 20 fruits, règles v1, trésorerie
 │   └── tests/               # tests SQL exécutables sur un PostgreSQL local
 ├── backend/                 # API Python (structure du cahier des charges §47)
@@ -81,6 +82,21 @@ flutter run -d chrome --dart-define=SUPABASE_URL=… --dart-define=SUPABASE_PUBL
 
 À titre indicatif, avec les valeurs fournies le taux de redistribution est d'environ 56 % pour CHOX, 75 % pour PERME 2/2, 80 % pour PERME à 3 numéros.
 
+## API (phase 2)
+
+| Route | Accès | Rôle |
+|---|---|---|
+| `GET /v1/me` · `PATCH /v1/me` | joueur | profil ; seuls prénom, nom, langue, avatar sont modifiables |
+| `GET /v1/wallet` | joueur | solde et devise |
+| `GET /v1/wallet/transactions?kind=&cursor=` | joueur | historique paginé (dépôts, retraits, paris, ajustements) |
+| `GET /v1/settings/public` | public | mise minimum, retrait minimum/maximum… |
+| `GET /v1/admin/users/{ID}` | personnel | fiche client §30 ; chaque consultation est tracée dans `admin_actions` |
+
+**Nommer un administrateur** : créer d'abord son compte dans l'application, puis dans Supabase > SQL Editor :
+```sql
+select private.grant_staff_role('vous@example.com', 'super_admin');
+```
+
 ## Prochaine étape
 
-Phase 2 : profil complet, portefeuille et historique (API `GET /v1/wallet`, `/v1/wallet/transactions`, écran Solde).
+Phase 3 : dépôt via les agents WhatsApp et validation par l'administration.

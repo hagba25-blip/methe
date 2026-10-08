@@ -43,10 +43,19 @@ class ApiClient {
     return _decode(res);
   }
 
+  Future<Map<String, dynamic>> patch(String path, Map<String, dynamic> body) async {
+    final res = await _http.patch(Uri.parse('${Env.apiBaseUrl}$path'), headers: _headers, body: jsonEncode(body));
+    return _decode(res);
+  }
+
   Map<String, dynamic> _decode(http.Response res) {
     final body = res.body.isEmpty ? <String, dynamic>{} : jsonDecode(utf8.decode(res.bodyBytes));
     if (res.statusCode >= 400) {
-      final detail = body is Map && body['detail'] is String ? body['detail'] as String : 'Erreur ${res.statusCode}';
+      final detail = body is Map && body['detail'] is String
+          ? body['detail'] as String
+          : res.statusCode == 422
+              ? 'Données invalides'
+              : 'Erreur ${res.statusCode}';
       throw ApiException(res.statusCode, detail);
     }
     return body as Map<String, dynamic>;

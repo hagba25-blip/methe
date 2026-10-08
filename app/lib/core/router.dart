@@ -11,6 +11,7 @@ import '../screens/bets/bets_screen.dart';
 import '../screens/games/games_screen.dart';
 import '../screens/home/app_shell.dart';
 import '../screens/home/home_screen.dart';
+import '../screens/profile/edit_profile_screen.dart';
 import '../screens/profile/profile_screen.dart';
 import '../screens/wallet/wallet_screens.dart';
 import '../widgets/placeholder_view.dart';
@@ -55,9 +56,13 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(path: '/deposit', builder: (_, __) => const DepositScreen()),
           GoRoute(path: '/withdraw', builder: (_, __) => const WithdrawScreen()),
           GoRoute(path: '/results', builder: (_, __) => const PlaceholderView('Résultats', phase: 9)),
-          GoRoute(path: '/transactions', builder: (_, __) => const PlaceholderView('Mes transactions', phase: 11)),
+          GoRoute(path: '/transactions', builder: (_, __) => const WalletScreen()),
           GoRoute(path: '/support', builder: (_, __) => const PlaceholderView('Support', phase: 12)),
-          GoRoute(path: '/profile', builder: (_, __) => const ProfileScreen()),
+          GoRoute(
+            path: '/profile',
+            builder: (_, __) => const ProfileScreen(),
+            routes: [GoRoute(path: 'edit', builder: (_, __) => const EditProfileScreen())],
+          ),
         ],
       ),
     ],

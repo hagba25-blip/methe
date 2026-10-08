@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../models/public_settings.dart';
 import '../../providers/providers.dart';
 import '../../widgets/balance_card.dart';
 
@@ -11,6 +12,7 @@ class HomeScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final me = ref.watch(meProvider);
+    final settings = ref.watch(publicSettingsProvider).value ?? PublicSettings.fallback;
     return me.when(
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (e, _) => Center(child: Text('Impossible de charger le compte : $e')),
@@ -19,7 +21,7 @@ class HomeScreen extends ConsumerWidget {
         child: ListView(padding: const EdgeInsets.all(16), children: [
           BalanceCard(
             profile: profile,
-            minWithdrawal: 1000, // remplacé en phase 4 par app_settings.withdrawal.min_amount
+            minWithdrawal: settings.minWithdrawal,
             onDeposit: () => context.go('/deposit'),
             onWithdraw: () => context.go('/withdraw'),
           ),
