@@ -43,8 +43,10 @@ def test_catalog(client):
     assert len(fruits["symbols"]) == 20 and fruits["symbols"][0]["emoji"]
     t = fruits["types"][0]
     assert t["code"] == "FRUITS" and t["min_stake"] == 50
+    assert t["settlement_mode"] == "pool" and t["commission_percent"] == 10
+    assert all(x["settlement_mode"] == "fixed" for x in games["LONATO"]["types"])
     assert {int(k): v["1"] for k, v in t["odds"].items()} == {
-        1: 50, 2: 25, 3: 16.67, 4: 12.5, 5: 10, 6: 8.33, 7: 7.14, 8: 6.25, 10: 5, 15: 3.33, 20: 1}, "cotes version 2"
+        1: 50, 2: 25, 3: 16.67, 4: 12.5, 5: 10, 6: 8.33, 7: 7.14, 8: 6.25, 10: 5, 15: 3.33, 20: 1}, "poids version 2"
     assert {x["code"] for x in games["LONATO"]["types"]} == {"PERME", "NAPE", "CHOX"}
 
 
@@ -54,9 +56,11 @@ def test_place_bet_debits_and_settles(client, sql, fruits_round):
     r = bet(client, fruits_round, ["mangue"], 100, key)
     assert r.status_code == 201, r.text
     b = r.json()
-    assert b["selections"] == ["MANGUE"] and b["potential_payout"] == 5000 and b["status"] == "pending"
+    assert b["selections"] == ["MANGUE"] and b["potential_payout"] == 0 and b["status"] == "pending"
     assert b["reference"].startswith("BET-") and b["odds_snapshot"] == {"1": 50.0}
     assert balance(client) == start - 100
+    pool = client.get(f"/v1/rounds/{fruits_round}/pool").json()
+    assert pool["total_stakes"] == 100 and pool["weights"] == {"MANGUE": 5000.0} and pool["commission_percent"] == 10
 
     assert bet(client, fruits_round, ["MANGUE"], 100, key).json()["id"] == b["id"], "double envoi"
     assert balance(client) == start - 100
@@ -66,7 +70,8 @@ def test_place_bet_debits_and_settles(client, sql, fruits_round):
     settled = client.get(f"/v1/bets/{b['id']}", headers=auth(USER_A)).json()
     won = settled["round_result"]["fruit"] == "MANGUE"
     assert settled["status"] == ("won" if won else "lost") and settled["round_status"] == "settled"
-    assert settled["actual_payout"] == (5000 if won else 0)
+    # seul pari de la cagnotte : 100 F − 10 % de commission
+    assert settled["actual_payout"] == (90 if won else 0)
     assert settled["matched_values"] == (["MANGUE"] if won else [])
     assert balance(client) == start - 100 + settled["actual_payout"]
 
@@ -85,7 +90,7 @@ def test_bet_errors(client, fruits_round):
 
 def test_my_bets_filters_and_privacy(client, fruits_round):
     placed = bet(client, fruits_round, [s["code"] for s in client.get("/v1/games").json()[0]["symbols"]], 50).json()
-    assert placed["selection_count"] == 20 and placed["potential_payout"] == 50
+    assert placed["selection_count"] == 20 and placed["odds_snapshot"] == {"1": 1.0}
     mine = client.get("/v1/bets", headers=auth(USER_A)).json()
     assert mine[0]["id"] == placed["id"]
     pending = client.get("/v1/bets?status=pending&game=FRUITS", headers=auth(USER_A)).json()

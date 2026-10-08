@@ -22,6 +22,9 @@ async def catalog(conn: AsyncConnection) -> list[dict]:
         select g.code, g.name, g.description, ds.interval_minutes, ds.close_before_seconds,
           coalesce((select jsonb_agg(jsonb_build_object(
                       'code', t.code, 'name', t.name, 'min_selection', t.min_selection,
+                      'settlement_mode', t.settlement_mode,
+                      'commission_percent', case when t.settlement_mode = 'pool'
+                                                 then private.setting_numeric('pool.commission_percent', 10) end,
                       'max_selection', t.max_selection,
                       'min_stake', greatest(t.min_stake, private.setting_bigint('betting.min_stake', 50)),
                       'odds', private.playable_odds(t.code)) order by t.sort_order)
@@ -66,3 +69,8 @@ async def list_for_user(
         {"user": user_id, "statuses": statuses, "game": game, "before": before, "limit": limit},
     )
     return await cur.fetchall()
+
+
+async def pool_state(conn: AsyncConnection, round_id: UUID) -> dict:
+    cur = await conn.execute("select private.pool_state(%s) as r", (round_id,))
+    return (await cur.fetchone())["r"]

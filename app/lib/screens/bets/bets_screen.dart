@@ -91,7 +91,10 @@ class _BetTile extends StatelessWidget {
       ]),
       subtitle: Text([
         'Mise ${money(b.stake)}',
-        b.status == BetStatus.won ? 'Gain ${money(b.actualPayout)}' : 'Gain possible ${money(b.potentialPayout)}',
+        if (b.status == BetStatus.won)
+          'Gain ${money(b.actualPayout)}'
+        else if (b.status == BetStatus.pending)
+          b.potentialPayout > 0 ? 'Gain possible ${money(b.potentialPayout)}' : 'Gain : part de la cagnotte si gagnant',
         'Tirage n° ${b.roundNumber} · ${DateFormat('dd/MM HH:mm').format(b.drawAt)}',
         if (result != null) 'Résultat : $result',
         b.reference,

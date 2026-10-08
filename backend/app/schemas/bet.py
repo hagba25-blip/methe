@@ -11,8 +11,11 @@ class GameTypeView(BaseModel):
     min_selection: int
     max_selection: int
     min_stake: int
+    settlement_mode: Literal["fixed", "pool"] = Field(
+        description="fixed : gain = mise × cote ; pool : pari mutuel, les cotes sont des poids")
+    commission_percent: float | None = Field(description="Commission sur la cagnotte (pari mutuel)")
     odds: dict[str, dict[str, float]] = Field(
-        description="Cotes jouables : nombre choisi → {nombre trouvé → multiplicateur}")
+        description="Cotes (ou poids en mutuel) jouables : nombre choisi → {nombre trouvé → valeur}")
 
 
 class SymbolView(BaseModel):
@@ -62,3 +65,11 @@ class BetView(BaseModel):
 
 
 BetFilter = Literal["pending", "won", "lost", "refunded"]
+
+
+class PoolState(BaseModel):
+    round_id: UUID
+    total_stakes: int
+    commission_percent: float
+    bet_count: int
+    weights: dict[str, float] = Field(description="Poids total (mise × poids) engagé sur chaque fruit")

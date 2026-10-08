@@ -44,7 +44,7 @@ begin
   for f in select code from public.game_symbols where game_code = 'FRUITS' order by code loop
     i := i + 1;
     b := private.place_bet(v_user, v_round, 'FRUITS', array[lower(f)], 50, 'fruit-' || f);
-    assert b.status = 'pending' and b.potential_payout = 2500 and b.odds_snapshot = '{"1": 50.0000}', 'cote figée x50 : ' || b.odds_snapshot;
+    assert b.status = 'pending' and b.potential_payout = 0 and b.odds_snapshot = '{"1": 50.0000}', 'poids figé 50, gain inconnu (mutuel) : ' || b.odds_snapshot;
   end loop;
   assert pg_temp.balance() = 10000 - 20 * 50, 'mises débitées';
 
@@ -56,10 +56,13 @@ begin
   -- 20 fruits → x1 (toujours gagnant, mise rendue)
   b := private.place_bet(v_user, v_round, 'FRUITS',
          array(select code from public.game_symbols where game_code = 'FRUITS'), 100, 'fruit-all');
-  assert b.selection_count = 20 and b.potential_payout = 100, '20 fruits x1';
+  assert b.selection_count = 20 and b.odds_snapshot = '{"1": 1.0000}', '20 fruits poids 1';
+  s := private.pool_state(v_round);
+  assert (s->>'total_stakes')::bigint = 1100 and (s->>'bet_count')::int = 21, 'cagnotte : ' || s;
+  assert (s->'weights'->>'KIWI')::numeric = 2500 + 100, 'poids engagé sur un fruit : ' || s;
   assert (select count(*) from public.bet_items where bet_id = b.id) = 20, 'sélections enregistrées';
   assert exists (select 1 from public.notifications where user_id = v_user and type = 'bet_placed'), 'notification pari';
-  raise notice 'OK  prise de paris Fruits, cotes figées, idempotence';
+  raise notice 'OK  prise de paris Fruits (mutuel), poids figés, cagnotte, idempotence';
 
   -- Tirage et règlement
   update public.game_rounds set status = 'closed' where id = v_round;
@@ -67,18 +70,21 @@ begin
   assert (select status from public.game_rounds where id = v_round) = 'settled', 'tour réglé';
   assert (select count(*) from public.bets where round_id = v_round and status = 'won') = 2, '1 fruit gagnant + 20 fruits';
   assert (select count(*) from public.bets where round_id = v_round and status = 'lost') = 19, '19 perdants';
-  assert (select bool_and(x.actual_payout = 2500 and (select value from public.bet_items where bet_id = x.id)
+  -- Cagnotte 1 100 F, 10 % de commission → 990 F partagés au prorata mise × poids :
+  -- gagnant 1 fruit 50 × 50 = 2 500, gagnant 20 fruits 100 × 1 = 100.
+  assert (select bool_and(x.actual_payout = 951 and (select value from public.bet_items where bet_id = x.id)
                           = (select result->>'fruit' from public.game_rounds where id = v_round))
             from public.bets x where x.round_id = v_round and x.status = 'won' and x.selection_count = 1), 'le bon fruit gagne';
-  assert pg_temp.balance() = 10000 - 1000 - 100 + 2500 + 100, 'gains crédités : ' || pg_temp.balance();
-  assert (select balance from public.wallets where id = private.system_wallet('HOUSE', 'XOF')) = v_house_before + 1100 - 2600,
-         'HOUSE : mises reçues, gains payés';
+  assert (select actual_payout from public.bets where idempotency_key = 'fruit-all') = 38, 'part du 20 fruits';
+  assert pg_temp.balance() = 10000 - 1100 + 951 + 38, 'gains crédités : ' || pg_temp.balance();
+  assert (select balance from public.wallets where id = private.system_wallet('HOUSE', 'XOF')) = v_house_before + 1100 - 989,
+         'HOUSE : jamais de perte, commission + arrondis gardés';
   assert (select count(*) from public.bet_results where round_id = v_round) = 21, 'résultat par pari';
   assert exists (select 1 from public.notifications where user_id = v_user and type = 'bet_won'), 'notification gain';
 
   -- Rejouer le règlement ne paie pas deux fois
   s := private.settle_round(v_round);
-  assert s ? 'skipped' and pg_temp.balance() = 11500, 'règlement unique';
+  assert s ? 'skipped' and pg_temp.balance() = 9889, 'règlement unique';
   raise notice 'OK  tirage, règlement, gains, aucun double paiement';
 end $$;
 
@@ -144,10 +150,46 @@ begin
   insert into public.payout_rules (game_type_code, version, selection_count, match_count, multiplier, condition, effective_from)
   values ('FRUITS', 3, 1, 1, 18, 'winner_in_selection', now() - interval '1 second');
   new_bet := private.place_bet('00000000-0000-0000-0000-00000000000f', '00000000-0000-0000-0000-0000000000a4', 'FRUITS', array['KIWI'], 50, 'v-new');
-  assert old_bet.payout_rule_version = 2 and old_bet.potential_payout = 2500, 'ancien pari à x50';
-  assert new_bet.payout_rule_version = 3 and new_bet.potential_payout = 900, 'nouveau pari à x18';
+  assert old_bet.payout_rule_version = 2 and old_bet.odds_snapshot = '{"1": 50.0000}', 'ancien pari au poids 50';
+  assert new_bet.payout_rule_version = 3 and new_bet.odds_snapshot = '{"1": 18}', 'nouveau pari au poids 18';
   assert private.playable_odds('FRUITS') = '{"1": {"1": 18}}', 'cotes affichées : ' || private.playable_odds('FRUITS');
   raise notice 'OK  versions de cotes : un pari placé garde ses cotes';
+end $$;
+rollback;
+
+-- Pari mutuel : sur 200 tours aléatoires avec des paris variés, la plateforme ne perd jamais
+begin;
+do $$
+declare
+  v_user constant uuid := '00000000-0000-0000-0000-00000000000f';
+  v_counts constant int[] := array[1, 2, 3, 4, 5, 6, 7, 8, 10, 15, 20];
+  v_rid uuid; v_stakes bigint; v_min_margin numeric := 1e9; k int; n int;
+begin
+  perform private.admin_credit((select public_id from public.profiles where id = v_user),
+    '00000000-0000-0000-0000-00000000000d', 50000000, 'Simulation', 'sim-credit');
+  for t in 1..200 loop
+    v_rid := gen_random_uuid();
+    insert into public.game_rounds (id, game_code, round_number, opens_at, closes_at, draw_at)
+    values (v_rid, 'FRUITS', 10000 + t, now() - interval '1 min', now() + make_interval(days => 400 + t),
+            now() + make_interval(days => 400 + t, mins => 1));
+    perform private.open_round(v_rid);
+    v_stakes := 0;
+    for j in 1..(1 + floor(random() * 12))::int loop
+      k := v_counts[1 + floor(random() * 11)::int];
+      n := (50 + floor(random() * 2000))::int;
+      perform private.place_bet(v_user, v_rid, 'FRUITS',
+        array(select code from public.game_symbols where game_code = 'FRUITS' order by random() limit k), n, 'sim-' || t || '-' || j);
+      v_stakes := v_stakes + n;
+    end loop;
+    update public.game_rounds set status = 'closed' where id = v_rid;
+    perform private.draw_round(v_rid);
+    assert (select coalesce(sum(actual_payout), 0) from public.bets where round_id = v_rid) <= v_stakes * 0.9,
+           format('tour %s : plus de 90 %% reversés', t);
+    v_min_margin := least(v_min_margin,
+      v_stakes - (select coalesce(sum(actual_payout), 0) from public.bets where round_id = v_rid));
+  end loop;
+  assert v_min_margin >= 0, 'jamais de perte';
+  raise notice 'OK  pari mutuel : 200 tours simulés, aucune perte (marge minimale % F)', v_min_margin;
 end $$;
 rollback;
 

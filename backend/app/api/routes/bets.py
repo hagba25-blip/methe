@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
 
 from app import db
 from app.repositories import bets
-from app.schemas.bet import BetFilter, BetRequest, BetView, GameView
+from app.schemas.bet import BetFilter, BetRequest, BetView, GameView, PoolState
 from app.security.auth import CurrentUser, get_current_user
 from app.services.db_errors import business_errors
 
@@ -17,6 +17,17 @@ async def games() -> list[GameView]:
     """Jeux, types de pari, cotes jouables (version en vigueur) et symboles."""
     async with db.transaction() as conn:
         return [GameView(**g) for g in await bets.catalog(conn)]
+
+
+@router.get("/rounds/{round_id}/pool", response_model=PoolState)
+async def pool(round_id: UUID) -> PoolState:
+    """Cagnotte d'un tour en pari mutuel, pour estimer le gain avant la fermeture.
+
+    Gain estimé si le fruit f sort = (cagnotte + mise) × (1 − commission) × w ÷ (poids_f + w),
+    avec w = mise × poids. Le partage définitif est calculé au tirage.
+    """
+    async with db.transaction() as conn:
+        return PoolState(round_id=round_id, **await bets.pool_state(conn, round_id))
 
 
 @router.post("/bets", response_model=BetView, status_code=status.HTTP_201_CREATED)

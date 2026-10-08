@@ -16,6 +16,8 @@ class GameType {
     required this.maxSelection,
     required this.minStake,
     required this.odds,
+    this.isPool = false,
+    this.commissionPercent,
   });
 
   final String code;
@@ -23,6 +25,10 @@ class GameType {
   final int minSelection;
   final int maxSelection;
   final int minStake;
+
+  /// Pari mutuel : les « cotes » sont des poids pour partager la cagnotte.
+  final bool isPool;
+  final double? commissionPercent;
 
   /// nombre choisi → {nombre trouvé → multiplicateur}, uniquement les combinaisons jouables.
   final Map<int, Map<int, double>> odds;
@@ -33,6 +39,8 @@ class GameType {
         minSelection: j['min_selection'] as int,
         maxSelection: j['max_selection'] as int,
         minStake: j['min_stake'] as int,
+        isPool: j['settlement_mode'] == 'pool',
+        commissionPercent: (j['commission_percent'] as num?)?.toDouble(),
         odds: {
           for (final e in (j['odds'] as Map<String, dynamic>).entries)
             int.parse(e.key): {
@@ -54,6 +62,39 @@ class GameType {
   int? potentialPayout(int count, int stake) {
     final m = bestMultiplier(count);
     return m == null ? null : (stake * m).floor();
+  }
+}
+
+/// Cagnotte d'un tour en pari mutuel.
+class PoolState {
+  const PoolState({required this.totalStakes, required this.commissionPercent, required this.betCount, required this.weights});
+  final int totalStakes;
+  final double commissionPercent;
+  final int betCount;
+  final Map<String, double> weights;
+
+  factory PoolState.fromJson(Map<String, dynamic> j) => PoolState(
+        totalStakes: j['total_stakes'] as int,
+        commissionPercent: (j['commission_percent'] as num).toDouble(),
+        betCount: j['bet_count'] as int,
+        weights: {for (final e in (j['weights'] as Map<String, dynamic>).entries) e.key: (e.value as num).toDouble()},
+      );
+
+  /// Gain estimé si [fruit] sort, en ajoutant maintenant une mise [stake] de poids [weight].
+  /// Il change avec les autres mises jusqu'à la fermeture ; le serveur fait le partage définitif.
+  int estimate(String fruit, int stake, double weight) {
+    final w = stake * weight;
+    final total = weights[fruit] ?? 0;
+    if (w <= 0) return 0;
+    return ((totalStakes + stake) * (100 - commissionPercent) / 100 * w / (total + w)).floor();
+  }
+
+  /// Fourchette de gain estimé selon le fruit de la sélection qui sortirait.
+  (int, int)? estimateRange(Iterable<String> fruits, int stake, double weight) {
+    final values = [for (final f in fruits) estimate(f, stake, weight)];
+    if (values.isEmpty) return null;
+    values.sort();
+    return (values.first, values.last);
   }
 }
 

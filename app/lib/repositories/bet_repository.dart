@@ -20,6 +20,8 @@ class BetRepository {
           {'round_id': roundId, 'game_type': gameType, 'selections': selections, 'stake': stake},
           idempotencyKey: requestKey));
 
+  Future<PoolState> pool(String roundId) async => PoolState.fromJson(await _api.get('/v1/rounds/$roundId/pool'));
+
   Future<List<Bet>> mine({BetStatus? status, String? game}) async {
     final qs = Uri(queryParameters: {
       if (status != null) 'status': status.name,

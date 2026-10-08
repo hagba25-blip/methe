@@ -8,9 +8,20 @@
 --  * une combinaison sans règle de paiement publiée n'est pas jouable ;
 --  * au tirage, chaque pari est réglé une seule fois (journal bet_win si gagnant) ;
 --  * un tour annulé rembourse intégralement ses paris (journal bet_refund).
+--
+-- Deux modes de gain par type de jeu (game_types.settlement_mode) :
+--  * 'fixed' : gain = mise × cote, connu au moment du pari (Lonato) ;
+--  * 'pool'  : pari mutuel. Les mises du tour forment une cagnotte ; après la
+--    commission de la plateforme, le reste est partagé entre les gagnants au
+--    prorata de mise × poids (les « cotes » servent de poids). La plateforme ne
+--    reverse jamais plus que ce qu'elle a encaissé sur le tour.
+
+alter table public.game_types add column if not exists settlement_mode text not null default 'fixed'
+  check (settlement_mode in ('fixed', 'pool'));
 
 insert into public.app_settings (key, value, is_public, description) values
-  ('betting.max_stake', 'null', true, 'Mise maximum par pari (null = illimitée)')
+  ('betting.max_stake', 'null', true, 'Mise maximum par pari (null = illimitée)'),
+  ('pool.commission_percent', '10', true, 'Commission de la plateforme sur la cagnotte des paris mutuels (%)')
 on conflict (key) do nothing;
 
 -- Version des règles en vigueur pour un type de jeu ------------------------------
@@ -126,7 +137,10 @@ begin
   insert into public.bets (user_id, wallet_id, round_id, game_code, game_type_code, selection_count, stake,
                            currency_code, payout_rule_version, odds_snapshot, potential_payout, idempotency_key)
   values (p_user_id, v_wallet.id, p_round_id, v_round.game_code, p_game_type, v_count, p_stake,
-          v_wallet.currency_code, v_version, v_odds, floor(p_stake * v_best)::bigint, p_idempotency_key)
+          v_wallet.currency_code, v_version, v_odds,
+          -- pari mutuel : gain inconnu avant la fermeture
+          case when v_type.settlement_mode = 'pool' then 0 else floor(p_stake * v_best)::bigint end,
+          p_idempotency_key)
   returning * into v_bet;
   insert into public.bet_items (bet_id, value) select v_bet.id, unnest(v_sel);
 
@@ -176,34 +190,73 @@ begin
   end;
 end $$;
 
+-- État de la cagnotte d'un tour mutuel : total misé et poids engagé sur chaque valeur.
+-- Sert à afficher le gain estimé ; le partage définitif est fait par settle_round.
+create or replace function private.pool_state(p_round_id uuid)
+returns jsonb language sql stable security definer set search_path = '' as $$
+  with b as (
+    select b.id, b.stake, b.stake * coalesce((b.odds_snapshot->>'1')::numeric, 0) as weight
+      from public.bets b join public.game_types t on t.code = b.game_type_code
+     where b.round_id = p_round_id and b.status = 'pending' and t.settlement_mode = 'pool')
+  select jsonb_build_object(
+    'total_stakes', coalesce((select sum(stake) from b), 0),
+    'commission_percent', private.setting_numeric('pool.commission_percent', 10),
+    'bet_count', (select count(*) from b),
+    'weights', coalesce((select jsonb_object_agg(value, w) from (
+                  select i.value, sum(b.weight) as w from b join public.bet_items i on i.bet_id = b.id
+                   group by i.value) x), '{}'::jsonb));
+$$;
+
 create or replace function private.settle_round(p_round_id uuid)
 returns jsonb language plpgsql security definer set search_path = '' as $$
 declare
   v_round  public.game_rounds%rowtype;
   b        public.bets%rowtype;
   e        record;
+  v_mode   text;
   v_payout bigint;
+  v_mult   numeric;
   v_rule   uuid;
   v_journal uuid;
   v_won    int := 0;
   v_lost   int := 0;
   v_paid   bigint := 0;
+  v_pool   bigint := 0;     -- mises du tour (paris mutuels)
+  v_dist   numeric := 0;    -- part redistribuée après commission
+  v_wsum   numeric := 0;    -- somme des poids gagnants
 begin
   select * into v_round from public.game_rounds where id = p_round_id for update;
   if v_round.status <> 'published' then
     return jsonb_build_object('skipped', v_round.status);
   end if;
 
+  -- Cagnotte mutuelle : calculée avant tout paiement
+  select coalesce(sum(b2.stake), 0),
+         coalesce(sum(b2.stake * (private.evaluate_bet(b2, v_round.result)).multiplier), 0)
+    into v_pool, v_wsum
+    from public.bets b2 join public.game_types t on t.code = b2.game_type_code
+   where b2.round_id = p_round_id and b2.status = 'pending' and t.settlement_mode = 'pool';
+  v_dist := floor(v_pool * (100 - private.setting_numeric('pool.commission_percent', 10)) / 100);
+
   for b in select * from public.bets where round_id = p_round_id and status = 'pending' order by placed_at for update loop
     e := private.evaluate_bet(b, v_round.result);
-    v_payout := floor(b.stake * e.multiplier)::bigint;
+    select settlement_mode into v_mode from public.game_types where code = b.game_type_code;
+    if v_mode = 'pool' then
+      -- part de la cagnotte proportionnelle à mise × poids ; arrondi à l'unité inférieure
+      v_payout := case when e.multiplier > 0 and v_wsum > 0
+                       then floor(v_dist * b.stake * e.multiplier / v_wsum)::bigint else 0 end;
+      v_mult := round(v_payout::numeric / b.stake, 4);
+    else
+      v_payout := floor(b.stake * e.multiplier)::bigint;
+      v_mult := e.multiplier;
+    end if;
     select id into v_rule from public.payout_rules
      where game_type_code = b.game_type_code and version = b.payout_rule_version
        and selection_count = b.selection_count
        and match_count = case when b.game_code = 'FRUITS' then 1 else coalesce(array_length(e.matched, 1), 0) end;
     insert into public.bet_results (bet_id, round_id, match_count, matched_values, rule_id, multiplier, payout)
     values (b.id, p_round_id, coalesce(array_length(e.matched, 1), 0), e.matched,
-            case when v_payout > 0 then v_rule end, e.multiplier, v_payout);
+            case when v_payout > 0 then v_rule end, v_mult, v_payout);
 
     if v_payout > 0 then
       v_journal := private.post_journal(
@@ -227,7 +280,7 @@ begin
   end loop;
 
   update public.game_rounds set status = 'settled', settled_at = now() where id = p_round_id;
-  return jsonb_build_object('won', v_won, 'lost', v_lost, 'paid', v_paid);
+  return jsonb_build_object('won', v_won, 'lost', v_lost, 'paid', v_paid, 'pool', v_pool);
 end $$;
 
 -- Remboursement des paris d'un tour annulé ---------------------------------------------

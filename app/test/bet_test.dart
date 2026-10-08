@@ -37,4 +37,26 @@ void main() {
     expect(b.resultFruit, 'KIWI');
     expect(b.actualPayout, 5000);
   });
+
+  test('pari mutuel : gain estimé', () {
+    final pool = PoolState.fromJson({
+      'total_stakes': 1000, 'commission_percent': 10, 'bet_count': 3,
+      'weights': {'KIWI': 2500.0, 'POMME': 0.0},
+    });
+    // (1000 + 100) × 90 % × 5000 ÷ (2500 + 5000) = 660
+    expect(pool.estimate('KIWI', 100, 50), 660);
+    // fruit sur lequel personne n'a misé : toute la part redistribuée
+    expect(pool.estimate('MANGUE', 100, 50), 990);
+    expect(pool.estimateRange(['KIWI', 'MANGUE'], 100, 50), (660, 990));
+    expect(pool.estimateRange([], 100, 50), isNull);
+  });
+
+  test('type mutuel', () {
+    final t = GameType.fromJson({
+      'code': 'FRUITS', 'name': 'Fruits', 'min_selection': 1, 'max_selection': 20, 'min_stake': 50,
+      'settlement_mode': 'pool', 'commission_percent': 10, 'odds': {'1': {'1': 50}},
+    });
+    expect(t.isPool, isTrue);
+    expect(t.commissionPercent, 10);
+  });
 }

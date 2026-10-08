@@ -13,13 +13,18 @@ import '../../providers/providers.dart';
 import '../../repositories/deposit_repository.dart';
 import '../../services/api_client.dart';
 
+final _poolProvider =
+    FutureProvider.autoDispose.family<PoolState, String>((ref, roundId) => ref.watch(betRepositoryProvider).pool(roundId));
+
 final _fruitsRoundProvider = FutureProvider.autoDispose((ref) async {
   final rounds = await ref.watch(roundRepositoryProvider).upcoming('FRUITS');
   return rounds.where((r) => r.status == RoundStatus.open).firstOrNull;
 });
 
 /// JEU DES FRUITS : choisir un ou plusieurs fruits, miser, valider.
-/// Seules les combinaisons ayant une cote publiée peuvent être jouées.
+/// Pari mutuel : les mises du tirage forment une cagnotte partagée entre les
+/// gagnants (après commission) au prorata de mise × poids. Seuls les nombres de
+/// fruits ayant un poids publié peuvent être joués.
 class FruitsScreen extends ConsumerStatefulWidget {
   const FruitsScreen({super.key});
   @override
@@ -39,8 +44,10 @@ class _FruitsScreenState extends ConsumerState<FruitsScreen> {
   @override
   void initState() {
     super.initState();
-    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (mounted) setState(() {});
+    _timer = Timer.periodic(const Duration(seconds: 1), (t) {
+      if (!mounted) return;
+      if (t.tick % 15 == 0) ref.invalidate(_poolProvider); // la cagnotte évolue avec les autres mises
+      setState(() {});
     });
   }
 
@@ -60,8 +67,9 @@ class _FruitsScreenState extends ConsumerState<FruitsScreen> {
       });
 
   Future<void> _submit(GameRound round, GameType type, GameInfo game, String currency) async {
-    final payout = type.potentialPayout(_selected.length, _stakeValue);
-    if (payout == null) return;
+    final weight = type.bestMultiplier(_selected.length);
+    if (weight == null) return;
+    final range = ref.read(_poolProvider(round.id)).value?.estimateRange(_selected, _stakeValue, weight);
     final fruits = [
       for (final s in game.symbols)
         if (_selected.contains(s.code)) '${s.emoji ?? ''} ${s.label}'
@@ -75,7 +83,13 @@ class _FruitsScreenState extends ConsumerState<FruitsScreen> {
           Text(fruits.join(', ')),
           const SizedBox(height: 12),
           Text('Mise : ${money(_stakeValue)}'),
-          Text('Gain si un de vos fruits sort : ${money(payout)}', style: const TextStyle(fontWeight: FontWeight.bold)),
+          Text(range == null
+              ? 'Gain : votre part de la cagnotte si un de vos fruits sort.'
+              : 'Gain estimé si un de vos fruits sort : ${_range(range, money)}',
+              style: const TextStyle(fontWeight: FontWeight.bold)),
+          const SizedBox(height: 8),
+          Text('Pari mutuel : le gain définitif dépend de toutes les mises, il est fixé à la fermeture.',
+              style: Theme.of(context).textTheme.bodySmall),
         ]),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Modifier')),
@@ -96,6 +110,7 @@ class _FruitsScreenState extends ConsumerState<FruitsScreen> {
       _requestKey = DepositRepository.newRequestKey();
       setState(_selected.clear);
       ref.invalidate(meProvider);
+      ref.invalidate(_poolProvider);
       _toast('Pari ${bet.reference} enregistré. Résultat à ${DateFormat('HH:mm').format(bet.drawAt)}.');
     } on ApiException catch (e) {
       _toast(e.message);
@@ -122,8 +137,9 @@ class _FruitsScreenState extends ConsumerState<FruitsScreen> {
         String money(int v) => formatMoney(v, currency, decimalsFor(currency));
         final count = _selected.length;
         final multiplier = type.bestMultiplier(count);
-        final payout = type.potentialPayout(count, _stakeValue);
         final r = round.value;
+        final pool = r == null ? null : ref.watch(_poolProvider(r.id)).value;
+        final range = multiplier == null ? null : pool?.estimateRange(_selected, _stakeValue, multiplier);
         final now = DateTime.now();
         final open = r != null && now.isBefore(r.closesAt);
         final stakeOk = _stakeValue >= type.minStake && (me == null || _stakeValue <= me.balance);
@@ -148,7 +164,17 @@ class _FruitsScreenState extends ConsumerState<FruitsScreen> {
             ),
           ),
           const SizedBox(height: 8),
-          Text('Combinaisons jouables : ${type.playableCounts.map((c) => '$c fruit${c > 1 ? 's' : ''} x${_fmt(type.bestMultiplier(c)!)}').join(' · ')}',
+          if (pool != null)
+            Card(
+              child: ListTile(
+                leading: const Icon(Icons.savings_outlined),
+                title: Text('Cagnotte du tirage : ${money(pool.totalStakes)}'),
+                subtitle: Text('${pool.betCount} pari(s) · ${_fmt(pool.commissionPercent)} % de commission, '
+                    'le reste est partagé entre les gagnants'),
+              ),
+            ),
+          const SizedBox(height: 4),
+          Text('Poids par nombre de fruits : ${type.playableCounts.map((c) => '$c → ${_fmt(type.bestMultiplier(c)!)}').join(' · ')}',
               style: t.bodySmall),
           const SizedBox(height: 12),
           GridView.count(
@@ -191,8 +217,10 @@ class _FruitsScreenState extends ConsumerState<FruitsScreen> {
           if (count > 0)
             Text(
               multiplier == null
-                  ? 'Pas de cote publiée pour $count fruits : choisissez ${type.playableCounts.join(' ou ')} fruit(s).'
-                  : 'Cote x${_fmt(multiplier)} · Gain possible : ${money(payout!)}',
+                  ? 'Pas de poids publié pour $count fruits : choisissez ${type.playableCounts.join(', ')} fruit(s).'
+                  : range == null
+                      ? 'Poids ${_fmt(multiplier)}'
+                      : 'Poids ${_fmt(multiplier)} · Gain estimé : ${_range(range, money)}',
               style: t.titleMedium?.copyWith(color: multiplier == null ? Theme.of(context).colorScheme.error : null),
             ),
           const SizedBox(height: 12),
@@ -209,7 +237,11 @@ class _FruitsScreenState extends ConsumerState<FruitsScreen> {
     );
   }
 
-  static String _fmt(double m) => m == m.roundToDouble() ? m.toInt().toString() : m.toString();
+  static String _fmt(double m) =>
+      m == m.roundToDouble() ? m.toInt().toString() : m.toString().replaceAll('.', ',');
+
+  static String _range((int, int) r, String Function(int) money) =>
+      r.$1 == r.$2 ? money(r.$1) : '${money(r.$1)} à ${money(r.$2)}';
 }
 
 class _FruitTile extends StatelessWidget {

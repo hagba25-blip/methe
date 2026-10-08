@@ -21,7 +21,7 @@ methe/
 │   │   ├── …0009_withdrawals_flow.sql        retrait : blocage, vérification, paiement, refus
 │   │   ├── …0010_draw_engine.sql             moteur de tirage : tours, graines, résultats (pg_cron)
 │   │   ├── …0011_betting.sql                 paris : prise, cotes figées, règlement, remboursement
-│   │   └── …0012_fruits_odds_v2.sql          cotes Fruits version 2
+│   │   └── …0012_fruits_odds_v2.sql          Fruits en pari mutuel, poids version 2
 │   ├── seed.sql             # pays, agents, jeux, 20 fruits, règles v1, trésorerie
 │   └── tests/               # tests SQL exécutables sur un PostgreSQL local
 ├── backend/                 # API Python (structure du cahier des charges §47)
@@ -79,7 +79,7 @@ flutter run -d chrome --dart-define=SUPABASE_URL=… --dart-define=SUPABASE_PUBL
 
 ## Points à confirmer
 
-1. **Cotes Fruits** : version 2 choisie par l'exploitant le 8 octobre 2026 : 50 ÷ nombre de fruits (1 → x50, 2 → x25, 3 → x16,67, 4 → x12,5, 5 → x10, 6 → x8,33, 7 → x7,14, 8 → x6,25, 10 → x5, 15 → x3,33) et 20 → x1. 9, 11 à 14 et 16 à 19 fruits ne sont pas jouables. ⚠️ Avec 1 fruit gagnant sur 20, chacune de ces combinaisons (sauf 20 fruits) reverse en moyenne 2,5 fois les mises ; une nouvelle version de cotes peut être publiée à tout moment sans toucher aux paris déjà placés.
+1. **Fruits en pari mutuel** (choix de l'exploitant, 8 octobre 2026) : les mises d'un tirage forment une cagnotte ; la plateforme garde sa commission (`pool.commission_percent`, 10 %) et partage le reste entre les gagnants au prorata de mise × poids. Poids = 50 ÷ nombre de fruits (1 → 50, 2 → 25, 3 → 16,67, 4 → 12,5, 5 → 10, 6 → 8,33, 7 → 7,14, 8 → 6,25, 10 → 5, 15 → 3,33) et 20 fruits → 1 ; 9, 11 à 14 et 16 à 19 fruits ne sont pas jouables. La plateforme ne peut perdre sur aucun tirage (vérifié sur 200 tirages simulés). Le gain affiché avant la fermeture est une estimation.
 2. **PERME** : seuls 2/2 (x300), 3/3 (x900), 3/2 (x100), 5/2 (x30) sont définis. Il manque les autres cas (4 numéros, 5 numéros avec 3/4/5 trouvés, 6 à 10 numéros). La règle « ÷10 » de l'exemple 5/2 est-elle générale ?
 3. **NAPE** : saisi comme 3 → x2700, 4 → x3600, 5 → x4500 (900 × nombre de numéros), gagnant seulement si tous sortent.
 4. **Retraits** : réglages provisoires dans `app_settings` : minimum 1 000 F, pas de maximum, 0 % de frais, pas de vérification d'identité obligatoire, 1 retrait en cours à la fois. À confirmer.
@@ -106,6 +106,7 @@ flutter run -d chrome --dart-define=SUPABASE_URL=… --dart-define=SUPABASE_PUBL
 | `GET /v1/rounds/{id}/verify` | public | recalcule le résultat depuis la graine (preuve d'équité) |
 | `POST /v1/admin/engine/tick` · `POST /v1/admin/rounds/{id}/cancel` | admin | avance le moteur tout de suite ; annule un tour pas encore tiré (motif obligatoire) |
 | `GET /v1/games` | public | jeux, types de pari, cotes jouables (version en vigueur), fruits |
+| `GET /v1/rounds/{id}/pool` | public | cagnotte d'un tour mutuel (total misé, poids par fruit) pour le gain estimé |
 | `POST /v1/bets` (en-tête `Idempotency-Key`) | joueur | pari : mise débitée, cotes figées ; un double envoi ne débite qu'une fois |
 | `GET /v1/bets?status=&game=&before=` · `GET /v1/bets/{id}` | joueur | mes paris avec résultat du tirage et gain |
 | `GET /v1/withdrawals/info` | joueur | solde, minimum, maximum, frais, raison d'un blocage, numéro par défaut |
@@ -124,7 +125,7 @@ Règles de sécurité des retraits : le montant quitte le solde du joueur dès l
 
 Moteur de tirage : `private.engine_tick()` crée les tours (2 créneaux à l'avance), les ouvre en tirant une graine secrète de 256 bits dont seule l'empreinte SHA-256 est publiée, ferme les mises (1 min avant pour les Fruits, 2 min pour le Lonato), tire le résultat par HMAC-SHA256 puis révèle la graine. Sur Supabase, la migration le programme chaque minute avec pg_cron ; à défaut, mettre `DRAW_ENGINE_ENABLED=true` dans le backend. Créneaux en heure UTC (= heure de Lomé) : Fruits à chaque heure, Lonato à 00h, 03h, 06h… Un tour que le moteur n'a pas pu ouvrir à temps est annulé plutôt que tiré. Le tirage fait dans la base et l'implémentation Python (`backend/app/draw/rng.py`) donnent le même résultat ; les tests le vérifient sur 200 graines.
 
-Règles des paris : la mise quitte le solde au moment du pari (vers `HOUSE`) ; les cotes sont celles en vigueur à cet instant et restent figées sur le ticket, même si une nouvelle version est publiée ; une combinaison sans cote publiée est refusée (Fruits : 1 à 8, 10, 15 et 20 fruits) ; au tirage, chaque pari est réglé une seule fois et le gain crédité aussitôt ; un tour annulé rembourse toutes ses mises. Le règlement couvre déjà les trois règles du Lonato (PERME, NAPE, CHOX), dont l'écran arrive en phase 7.
+Règles des paris : deux modes de gain, `fixed` (gain = mise × cote, connu d'avance : Lonato) et `pool` (pari mutuel : Fruits). La mise quitte le solde au moment du pari (vers `HOUSE`) ; les cotes sont celles en vigueur à cet instant et restent figées sur le ticket, même si une nouvelle version est publiée ; une combinaison sans cote publiée est refusée (Fruits : 1 à 8, 10, 15 et 20 fruits) ; au tirage, chaque pari est réglé une seule fois et le gain crédité aussitôt ; un tour annulé rembourse toutes ses mises. Le règlement couvre déjà les trois règles du Lonato (PERME, NAPE, CHOX), dont l'écran arrive en phase 7.
 
 Android : pour que le lien WhatsApp s'ouvre, ajouter dans `android/app/src/main/AndroidManifest.xml` (généré par `flutter create`) un bloc `<queries>` avec une intention `VIEW` sur le schéma `https`.
 
