@@ -20,6 +20,10 @@ services:
         sync: false            # chaîne de connexion Supabase (contient le mot de passe) : à saisir dans Render
       - key: SUPABASE_JWT_SECRET
         sync: false            # laisser vide si le projet utilise les clés JWT asymétriques (recommandé)
+      - key: SUPABASE_PUBLISHABLE_KEY
+        value: sb_publishable_Ow1_HIRNH7P7h5U-YeXdzw_nvY8-Lqq   # clé PUBLIQUE (la même que dans l'application)
+      - key: REQUIRE_EMAIL_CODE
+        value: "true"          # connexion : mot de passe + code e-mail obligatoires
       - key: CORS_ORIGINS
         value: https://hagba25-blip.github.io
       - key: TRUSTED_PROXY_HOPS

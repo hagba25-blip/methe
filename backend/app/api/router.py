@@ -1,9 +1,10 @@
 from fastapi import APIRouter
 
-from app.api.routes import admin_dashboard, admin_deposits, admin_risk, admin_rounds, admin_support, admin_users, admin_withdrawals, bets, deposits, health, locale, me, rounds, settings, support, wallet, withdrawals
+from app.api.routes import admin_dashboard, admin_deposits, admin_risk, admin_rounds, admin_support, admin_users, admin_withdrawals, auth, bets, deposits, health, locale, me, rounds, settings, support, wallet, withdrawals
 
 api_router = APIRouter()
 api_router.include_router(health.router)
+api_router.include_router(auth.router)
 api_router.include_router(locale.router)
 api_router.include_router(settings.router)
 api_router.include_router(me.router)

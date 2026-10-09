@@ -1,5 +1,7 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'api_client.dart';
+
 class RegistrationData {
   RegistrationData({
     required this.firstName,
@@ -28,18 +30,42 @@ class RegistrationData {
   final DateTime? birthDate;
 }
 
-/// Inscription / connexion via Supabase Auth. Les métadonnées sont revalidées
-/// côté base (trigger private.handle_new_user) : une valeur invalide fait
-/// échouer l'inscription, quelles que soient les vérifications faites ici.
+/// Étape 1 réussie : un code a été envoyé à l'e-mail du compte.
+class LoginChallenge {
+  LoginChallenge({required this.id, required this.emailHint, this.notice});
+  factory LoginChallenge.fromJson(Map<String, dynamic> j) => LoginChallenge(
+        id: j['challenge_id'] as String,
+        emailHint: j['email_hint'] as String,
+        notice: j['notice'] as String?,
+      );
+  final String id;
+  final String emailHint; // ex. « hu*****@gmail.com »
+  final String? notice;
+}
+
+/// Inscription via Supabase Auth ; connexion en deux étapes via le serveur :
+/// ID client (ou e-mail) + mot de passe, puis code reçu par e-mail.
+/// Les métadonnées d'inscription sont revalidées côté base (trigger
+/// private.handle_new_user) : une valeur invalide fait échouer l'inscription.
 class AuthService {
-  AuthService(this._auth);
+  AuthService(this._auth, this._api);
   final GoTrueClient _auth;
+  final ApiClient _api;
 
   Stream<AuthState> get changes => _auth.onAuthStateChange;
   Session? get session => _auth.currentSession;
 
-  Future<void> signIn(String email, String password) =>
-      _auth.signInWithPassword(email: email.trim(), password: password);
+  Future<LoginChallenge> startLogin(String identifier, String password) async => LoginChallenge.fromJson(
+      await _api.post('/v1/auth/login', {'identifier': identifier.trim(), 'password': password}));
+
+  Future<LoginChallenge> resendCode(String challengeId) async =>
+      LoginChallenge.fromJson(await _api.post('/v1/auth/login/resend', {'challenge_id': challengeId}));
+
+  /// Vérifie le code ; en cas de succès la session Supabase est ouverte.
+  Future<void> verifyCode(String challengeId, String code) async {
+    final s = await _api.post('/v1/auth/login/verify', {'challenge_id': challengeId, 'code': code.trim()});
+    await _auth.setSession(s['refresh_token'] as String);
+  }
 
   Future<void> register(RegistrationData d) => _auth.signUp(
         email: d.email.trim(),

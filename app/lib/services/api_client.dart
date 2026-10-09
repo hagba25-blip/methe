@@ -62,6 +62,11 @@ class ApiClient {
 
   Map<String, dynamic> _decode(http.Response res) {
     final body = res.body.isEmpty ? <String, dynamic>{} : jsonDecode(utf8.decode(res.bodyBytes));
+    if (res.statusCode == 401 && res.request?.headers['Authorization'] != null) {
+      // Session refusée par le serveur (expirée, ou ouverte sans code e-mail) :
+      // on la ferme pour revenir à l'écran de connexion.
+      _supabase.auth.signOut();
+    }
     if (res.statusCode >= 400) {
       final detail = body is Map && body['detail'] is String
           ? body['detail'] as String

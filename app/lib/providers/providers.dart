@@ -16,7 +16,8 @@ import '../services/auth_service.dart';
 
 final supabaseProvider = Provider<SupabaseClient>((_) => Supabase.instance.client);
 final apiClientProvider = Provider((ref) => ApiClient(ref.watch(supabaseProvider)));
-final authServiceProvider = Provider((ref) => AuthService(ref.watch(supabaseProvider).auth));
+final authServiceProvider =
+    Provider((ref) => AuthService(ref.watch(supabaseProvider).auth, ref.watch(apiClientProvider)));
 final profileRepositoryProvider =
     Provider((ref) => ProfileRepository(ref.watch(apiClientProvider), ref.watch(supabaseProvider)));
 
