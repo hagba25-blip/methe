@@ -11,6 +11,11 @@ class Settings(BaseSettings):
     supabase_url: str = ""
     supabase_jwt_secret: str = ""          # HS256 (legacy) ; vide → JWKS
     supabase_jwt_audience: str = "authenticated"
+    # Clé publique (« publishable » / anon) du projet : sert à demander l'envoi
+    # et la vérification du code de connexion à Supabase Auth.
+    supabase_publishable_key: str = ""
+    # Refuse les sessions ouvertes avec le mot de passe seul (sans code e-mail)
+    require_email_code: bool = True
     database_url: str = ""
     cors_origins: str = "http://localhost:5000"
     default_country: str = "TG"

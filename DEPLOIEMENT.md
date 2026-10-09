@@ -77,6 +77,52 @@ Copiez l'APK sur un téléphone et ouvrez-le (autorisez « installer des applica
 inconnues »). Pour le Play Store, il faudra une clé de signature dédiée : ce sera
 une étape à part.
 
+## Connexion par code e-mail (ID client + mot de passe + code)
+
+Le joueur saisit son **ID client** (ou son e-mail) et son mot de passe, puis le
+**code à 6 chiffres** reçu sur l'e-mail du compte. Supabase génère, envoie et
+vérifie ce code. Le serveur refuse toute session ouverte sans ce code.
+
+À faire **dans cet ordre, avant de fusionner la PR** (sinon personne ne peut se connecter) :
+
+1. **Envoi des e-mails (SMTP)** : l'envoi intégré de Supabase ne sert qu'aux essais
+   (quelques e-mails par heure, uniquement vers les membres de l'équipe Supabase).
+   Créez un compte gratuit chez un service d'envoi, par exemple **Brevo** (300 e-mails par jour),
+   validez-y l'adresse d'expédition, puis dans Supabase > Authentication > **Emails** >
+   *SMTP Settings* > **Enable custom SMTP** :
+   - *Sender email* : l'adresse validée chez Brevo ; *Sender name* : `methe`
+   - *Host* : `smtp-relay.brevo.com` ; *Port* : `587`
+   - *Username* : l'identifiant SMTP Brevo ; *Password* : la clé SMTP Brevo
+     (à saisir **uniquement dans Supabase**, jamais dans un message).
+2. **Modèle de l'e-mail** : Authentication > Emails > *Templates* > **Magic Link** :
+   - *Subject* : `Votre code de connexion methe`
+   - *Body* (remplace tout le contenu) :
+
+     ```html
+     <h2>Votre code de connexion</h2>
+     <p>Bonjour,</p>
+     <p>Voici votre code pour vous connecter à methe :</p>
+     <p style="font-size:28px;font-weight:bold;letter-spacing:6px">{{ .Token }}</p>
+     <p>Ce code est valable 10 minutes. Si vous n'avez pas demandé à vous connecter,
+     ignorez cet e-mail et changez votre mot de passe.</p>
+     ```
+   Ajoutez aussi `<p>Code : <b>{{ .Token }}</b></p>` au modèle **Confirm signup** :
+   un joueur qui n'a pas encore cliqué sur le lien de confirmation reçoit cet
+   e-mail-là quand il se connecte, et pourra utiliser le code.
+3. **Durée du code** : Authentication > Sign In / Providers > **Email** >
+   *Email OTP Expiration* : `600` secondes ; *Email OTP Length* : `6`.
+4. **Limite d'envoi** : Authentication > **Rate Limits** > *Rate limit for sending emails* :
+   au moins `100` par heure.
+5. **Base** : SQL Editor > exécuter `supabase/migrations/20261009000015_login_code.sql`
+   (fichier `methe-phase14-supabase.sql`).
+6. **Test** : fusionnez la PR, attendez le redéploiement Render et la publication Web,
+   puis connectez-vous avec votre ID client : le code doit arriver par e-mail.
+
+Sécurité : 5 mots de passe faux en 15 minutes verrouillent le compte 15 minutes ;
+5 codes faux obligent à recommencer ; un code n'est valable qu'une fois.
+Si les codes n'arrivent pas : Supabase > Logs > **Auth** montre l'erreur d'envoi
+(le plus souvent un réglage SMTP).
+
 ## Étape 4 — Contrôle final
 
 1. Ouvrez l'application Web, connectez-vous avec votre compte administrateur.

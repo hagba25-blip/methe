@@ -28,6 +28,13 @@ begin
   from pg_tables where schemaname = 'public' and not rowsecurity;
 end $$;
 
+insert into methe_checks (controle, etat, detail)
+select 'Connexion par code (phase 14)',
+       case when to_regprocedure('private.start_login(text,text,text)') is not null then 'OK' else 'ERREUR' end,
+       case when to_regprocedure('private.start_login(text,text,text)') is not null
+            then 'mot de passe + code e-mail installés'
+            else 'exécuter methe-phase14-supabase.sql' end;
+
 -- 2. Moteur de tirage (pg_cron) et tirages récents
 do $$
 declare

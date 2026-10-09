@@ -18,6 +18,19 @@ from app.config import Settings, get_settings
 _bearer = HTTPBearer(auto_error=False)
 
 
+# Méthodes de connexion qui prouvent l'accès à la boîte e-mail du compte
+# (code à usage unique, lien de confirmation d'inscription, de récupération…).
+# Une session ouverte avec le mot de passe seul (« password ») est refusée.
+EMAIL_PROVEN_METHODS = {"otp", "magiclink", "email/signup", "recovery", "invite", "email_change"}
+
+
+def email_code_verified(claims: dict) -> bool:
+    amr = claims.get("amr")
+    if not isinstance(amr, list):
+        return False
+    return any(isinstance(m, dict) and m.get("method") in EMAIL_PROVEN_METHODS for m in amr)
+
+
 @dataclass(frozen=True)
 class CurrentUser:
     id: UUID
@@ -58,6 +71,9 @@ async def get_current_user(
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Authentification requise")
     try:
         claims = decode_token(credentials.credentials, settings)
-        return CurrentUser(id=UUID(claims["sub"]), email=claims.get("email"), claims=claims)
+        user = CurrentUser(id=UUID(claims["sub"]), email=claims.get("email"), claims=claims)
     except (jwt.PyJWTError, ValueError, KeyError):
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Jeton invalide ou expiré") from None
+    if settings.require_email_code and not email_code_verified(claims):
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Code de vérification requis : reconnectez-vous")
+    return user
